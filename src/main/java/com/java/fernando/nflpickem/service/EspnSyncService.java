@@ -10,9 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -25,6 +27,12 @@ public class EspnSyncService {
     private final WeekRepository weekRepository;
     private final LeaderBoardService leaderboardService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Cliente HTTP nativo do Java moderno
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     public EspnSyncService(WeekRepository weekRepository, LeaderBoardService leaderboardService) {
         this.weekRepository = weekRepository;
@@ -40,7 +48,7 @@ public class EspnSyncService {
         try {
             log.info("Iniciando sincronização automática da NFL via ESPN...");
             String currentUrl = "https://cdn.espn.com/core/nfl/schedule?xhr=1";
-            String jsonResponse = fetchWithNativeCurl(currentUrl);
+            String jsonResponse = fetchHttp(currentUrl);
 
             JsonNode root = objectMapper.readTree(jsonResponse);
             JsonNode content = root.path("content");
@@ -66,7 +74,7 @@ public class EspnSyncService {
                 season, weekNumber
         );
 
-        String jsonResponse = fetchWithNativeCurl(url);
+        String jsonResponse = fetchHttp(url);
         JsonNode root;
         try {
             root = objectMapper.readTree(jsonResponse);
@@ -166,7 +174,6 @@ public class EspnSyncService {
             }
         }
         if (!games.isEmpty() && (week.getTiebreakerGameId() == null || week.getTiebreakerGameId().isBlank())) {
-            // Elege o último confronto (ex: Monday Night Football) como jogo de desempate
             week.setTiebreakerGameId(games.get(games.size() - 1).getId());
         }
 
@@ -182,35 +189,25 @@ public class EspnSyncService {
         return savedWeek;
     }
 
-    private String fetchWithNativeCurl(String url) {
+    private String fetchHttp(String url) {
         try {
-            ProcessBuilder processBuilder = new ProcessBuilder(
-                    "curl.exe",
-                    "-s",
-                    "-L",
-                    "-H", "User-Agent: Mozilla/5.0",
-                    url
-            );
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(15))
+                    .GET()
+                    .build();
 
-            Process process = processBuilder.start();
-            StringBuilder output = new StringBuilder();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line);
-                }
+            if (response.statusCode() != 200) {
+                throw new IllegalStateException("ESPN respondeu com status HTTP " + response.statusCode());
             }
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0 || output.isEmpty()) {
-                throw new IllegalStateException("curl retornou código " + exitCode);
-            }
-
-            return output.toString();
+            return response.body();
         } catch (Exception e) {
-            throw new RuntimeException("Falha ao consultar grade da ESPN via curl nativo", e);
+            throw new RuntimeException("Falha ao consultar API da ESPN: " + e.getMessage(), e);
         }
     }
 }
