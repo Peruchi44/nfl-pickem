@@ -43,7 +43,7 @@ public class UserController {
 
     public record EmailLoginRequest(String email, String name) {}
 
-    @PostMapping("/login-email")
+    @PostMapping(value = {"/login", "/login-email"})
     public ResponseEntity<?> loginOrRegisterWithEmail(@RequestBody EmailLoginRequest req) {
         if (req.email() == null || req.email().isBlank()) {
             return ResponseEntity.badRequest().body("E-mail é obrigatório.");

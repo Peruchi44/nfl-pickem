@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFL Pick'em</title>
+    <title>NFL Pick'Em</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -11,116 +11,151 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 500: '#013369', 600: '#d50a0a' }
+                        nfl: {
+                            blue: '#013369',
+                            red: '#D50A0A'
+                        }
                     }
                 }
             }
         }
     </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-12">
 
 <!-- Header -->
-<header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 backdrop-blur">
-    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-2">
-            <span class="text-2xl font-black tracking-wider text-red-500">NFL</span>
-            <span class="text-lg font-bold text-slate-200">Pick'em</span>
+<header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-football text-amber-500 text-2xl"></i>
+            <h1 class="text-xl font-bold tracking-wider text-white">NFL PICK'EM</h1>
         </div>
 
-        <div id="userArea" class="flex items-center gap-2"></div>
+        <div class="flex items-center space-x-4">
+            <div id="userGreeting" class="hidden text-sm text-slate-300">
+                Olá, <span id="userNameDisplay" class="font-bold text-amber-400"></span>
+            </div>
+            <button id="authBtn" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded font-medium transition">
+                Entrar
+            </button>
+        </div>
     </div>
 </header>
 
-<main class="max-w-4xl mx-auto px-4 mt-6">
-    <!-- Abas -->
-    <div class="flex border-b border-slate-800 mb-6">
-        <button id="tabGamesBtn" onclick="switchTab('games')" class="px-5 py-2.5 font-semibold text-sm border-b-2 border-blue-500 text-blue-400">
-            Partidas & Palpites
-        </button>
-        <button id="tabRankBtn" onclick="switchTab('ranking')" class="px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-            Classificação Geral
-        </button>
+<!-- Conteúdo Principal -->
+<main class="max-w-6xl mx-auto px-4 mt-6">
+    <!-- Controles: Seleção de Rodada e Leaderboard -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+        <div class="flex items-center space-x-3 w-full md:w-auto">
+            <label for="weekSelect" class="text-sm font-medium text-slate-400">Semana:</label>
+            <select id="weekSelect" onchange="changeWeek()" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500 flex-1 md:w-48">
+            </select>
+        </div>
+
+        <div class="flex gap-2 w-full md:w-auto">
+            <button onclick="openLeaderboardModal()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-trophy"></i> Ver Leaderboard
+            </button>
+        </div>
     </div>
 
-    <!-- CONTEÚDO 1: GRADE DE JOGOS -->
-    <section id="gamesSection" class="space-y-4">
-        <div class="flex flex-wrap justify-between items-center bg-slate-900/60 p-3 rounded-xl border border-slate-800 gap-3">
-            <div class="flex items-center gap-2">
-                <label for="weekSelect" class="text-xs font-semibold text-slate-400">Semana:</label>
-                <select id="weekSelect" onchange="onWeekChanged()"
-                        class="bg-slate-800 border border-slate-700 text-slate-100 text-sm font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <!-- Gerado via JS de 1 a 18 -->
-                </select>
-                <span id="seasonBadge" class="text-xs font-medium text-slate-400">Temporada 2026</span>
+    <!-- Banner de Notificação -->
+    <div id="notificationBanner" class="hidden mb-6 p-4 rounded-lg text-sm flex items-center justify-between">
+        <span id="notificationMessage"></span>
+        <button onclick="hideNotification()" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+
+    <!-- Grid de Jogos -->
+    <div id="gamesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    </div>
+
+    <!-- Bloco do Tiebreaker (Margem de Vitória) -->
+    <div id="tiebreakerCard" class="hidden mt-8 bg-gradient-to-r from-amber-950/30 via-slate-900 to-amber-950/30 border border-amber-500/40 rounded-xl p-5 shadow-lg">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-star text-amber-400 text-xl"></i>
+                <div>
+                    <h3 class="text-base font-bold text-amber-300">Jogo do Desempate (Tiebreaker)</h3>
+                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Digite a margem final de vitória prevista para o último jogo.</p>
+                </div>
             </div>
-            <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700">Clique no time para palpitar</span>
+            <div class="flex items-center space-x-3">
+                <input type="number" id="tiebreakerMarginInput" min="1" max="99" placeholder="Margem pts (ex: 7)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
+                <button onclick="saveTiebreakerMargin()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition">
+                    Salvar Margem
+                </button>
+            </div>
         </div>
-
-        <div id="gamesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </section>
-
-    <!-- CONTEÚDO 2: RANKING -->
-    <section id="rankingSection" class="hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                <tr class="bg-slate-800/60 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    <th class="py-3 px-4">Posição</th>
-                    <th class="py-3 px-4">Participante</th>
-                    <th class="py-3 px-4 text-center">Acertos</th>
-                    <th class="py-3 px-4 text-right">Palpites Feitos</th>
-                </tr>
-                </thead>
-                <tbody id="rankingTableBody" class="divide-y divide-slate-800 text-sm"></tbody>
-            </table>
-        </div>
-    </section>
+    </div>
 </main>
 
 <!-- Modal Login -->
-<div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-        <div class="text-center">
-            <span class="text-3xl font-black text-red-500">NFL</span>
-            <h3 class="text-xl font-bold text-slate-100 mt-1">Identifique-se para Jogar</h3>
-            <p class="text-xs text-slate-400 mt-1">Seus palpites ficam associados unicamente ao seu e-mail.</p>
+<div id="loginModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-white">Identifique-se</h3>
+            <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white">&times;</button>
         </div>
-
-        <form id="emailLoginForm" onsubmit="handleEmailLogin(event)" class="space-y-4 pt-2">
+        <p class="text-xs text-slate-400 mb-4">Digite seu e-mail e nome para salvar seus palpites e ver sua pontuação.</p>
+        <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
             <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Seu E-mail *</label>
-                <input type="email" id="inputEmail" required placeholder="exemplo@gmail.com"
-                       class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs text-slate-400 mb-1">E-mail</label>
+                <input type="email" id="loginEmail" required class="w-full bg-slate-800 border border-slate-700 text-white rounded p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
-
             <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Seu Nome / Apelido</label>
-                <input type="text" id="inputName" placeholder="Ex: Lucas, Ju..."
-                       class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs text-slate-400 mb-1">Nome / Apelido</label>
+                <input type="text" id="loginName" required class="w-full bg-slate-800 border border-slate-700 text-white rounded p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
-
-            <div class="flex gap-2 pt-2">
-                <button type="button" onclick="closeLoginModal()"
-                        class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-lg transition text-sm">
-                    Cancelar
-                </button>
-                <button type="submit"
-                        class="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition text-sm">
-                    Entrar
-                </button>
-            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+                Acessar
+            </button>
         </form>
     </div>
 </div>
 
+<!-- Modal Leaderboard -->
+<div id="leaderboardModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-trophy text-amber-400 text-lg"></i>
+                <h3 class="text-lg font-bold text-white">Classificação Geral</h3>
+            </div>
+            <button onclick="closeLeaderboardModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+        </div>
+
+        <div class="overflow-y-auto flex-1">
+            <table class="w-full text-sm text-left text-slate-300">
+                <thead class="text-xs uppercase bg-slate-800 text-slate-400 sticky top-0">
+                <tr>
+                    <th class="px-4 py-3 rounded-l-lg">Pos</th>
+                    <th class="px-4 py-3">Participante</th>
+                    <th class="px-4 py-3 text-center">Acertos</th>
+                    <th class="px-4 py-3 text-center rounded-r-lg">Dif. Tiebreaker</th>
+                </tr>
+                </thead>
+                <tbody id="leaderboardBody" class="divide-y divide-slate-800/60">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Lógica JavaScript -->
 <script>
-    let currentSeason = 2026;
-    let selectedWeek = 2;
-    let currentUser = null;
+    const CURRENT_SEASON = 2026;
+    let currentUser = JSON.parse(localStorage.getItem('nfl_user') || 'null');
+    let currentWeek = 2;
+    let activeWeekData = null;
+    let currentStatsMap = {};
     let userPicks = {};
-    let tiebreakerGameId = null;
-    let userTiebreakerMargin = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initWeekSelector();
+        checkUserAuth();
+        loadWeek(CURRENT_SEASON, currentWeek);
+    });
 
     function initWeekSelector() {
         const select = document.getElementById('weekSelect');
@@ -128,373 +163,422 @@
         for (let i = 1; i <= 18; i++) {
             const opt = document.createElement('option');
             opt.value = i;
-            opt.textContent = `Semana ${i}`;
+            opt.textContent = 'Semana ' + i;
             select.appendChild(opt);
         }
-        select.value = selectedWeek;
+        select.value = currentWeek;
     }
 
-    async function detectCurrentWeek() {
-        try {
-            const res = await fetch('/api/weeks/current');
-            if (res.ok) {
-                const currentWeekData = await res.json();
-                if (currentWeekData && currentWeekData.weekNumber) {
-                    selectedWeek = currentWeekData.weekNumber;
-                    currentSeason = currentWeekData.season || currentSeason;
-                    document.getElementById('weekSelect').value = selectedWeek;
-                    document.getElementById('seasonBadge').textContent = `Temporada ${currentSeason}`;
-                }
-            }
-        } catch (e) {
-            console.warn("Usando semana padrão:", e);
+    function checkUserAuth() {
+        const greeting = document.getElementById('userGreeting');
+        const nameDisplay = document.getElementById('userNameDisplay');
+        const authBtn = document.getElementById('authBtn');
+
+        if (currentUser && (currentUser.id || currentUser.userId || currentUser._id)) {
+            greeting.classList.remove('hidden');
+            nameDisplay.textContent = currentUser.displayName || currentUser.username || currentUser.name || currentUser.email;
+            authBtn.textContent = 'Sair';
+            authBtn.className = 'bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded font-medium transition';
+        } else {
+            greeting.classList.add('hidden');
+            authBtn.textContent = 'Entrar';
+            authBtn.className = 'bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded font-medium transition';
         }
     }
 
-    function onWeekChanged() {
-        selectedWeek = parseInt(document.getElementById('weekSelect').value, 10);
-        loadData();
-    }
-
-    function renderUserHeader() {
-        const container = document.getElementById('userArea');
-        if (currentUser && currentUser.id) {
-            const displayName = currentUser.displayName || currentUser.username || currentUser.name || "Jogador";
-            container.innerHTML = `
-          <div class="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700">
-            <span class="text-xs text-slate-400">Jogador:</span>
-            <span class="text-sm font-bold text-slate-100">${displayName}</span>
-            <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 ml-2 font-semibold underline">
-              Sair
-            </button>
-          </div>
-        `;
+    function handleAuthClick() {
+        if (currentUser) {
+            localStorage.removeItem('nfl_user');
+            currentUser = null;
+            userPicks = {};
+            checkUserAuth();
+            loadWeek(CURRENT_SEASON, currentWeek);
         } else {
-            container.innerHTML = `
-          <button onclick="openLoginModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition">
-            Entrar com E-mail
-          </button>
-        `;
+            openLoginModal();
         }
     }
 
     function openLoginModal() {
         document.getElementById('loginModal').classList.remove('hidden');
-        document.getElementById('inputEmail').focus();
     }
 
     function closeLoginModal() {
         document.getElementById('loginModal').classList.add('hidden');
     }
 
-    async function handleEmailLogin(event) {
-        event.preventDefault();
-        const email = document.getElementById('inputEmail').value.trim();
-        const name = document.getElementById('inputName').value.trim();
-        if (!email) return;
+    async function handleLoginSubmit(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const email = document.getElementById('loginEmail').value.trim();
+        const name = document.getElementById('loginName').value.trim();
+
+        if (!email) {
+            alert('Informe um e-mail.');
+            return;
+        }
 
         try {
-            const res = await fetch('/api/users/login-email', {
+            let res = await fetch('/api/users/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, name })
+                body: JSON.stringify({ email: email, name: name })
             });
 
-            if (!res.ok) {
-                alert("Não foi possível acessar: " + (await res.text()));
-                return;
+            if (res.status === 404) {
+                res = await fetch('/api/users/login-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, name: name })
+                });
             }
 
-            const user = await res.json();
-            currentUser = user;
-            localStorage.setItem('pickem_auth_user', JSON.stringify(user));
-            closeLoginModal();
-            renderUserHeader();
-            loadData();
+            if (res.ok) {
+                currentUser = await res.json();
+                localStorage.setItem('nfl_user', JSON.stringify(currentUser));
+                closeLoginModal();
+                checkUserAuth();
+                loadWeek(CURRENT_SEASON, currentWeek);
+                showNotification('Conectado com sucesso!', 'success');
+            } else {
+                const errDetail = await res.text();
+                alert('Erro ao autenticar: ' + errDetail);
+            }
         } catch (err) {
-            alert("Erro de conexão ao autenticar.");
+            console.error('Falha na autenticação:', err);
+            alert('Erro de conexão ao autenticar.');
         }
     }
 
-    function logout() {
-        localStorage.removeItem('pickem_auth_user');
-        currentUser = null;
-        userPicks = {};
-        userTiebreakerMargin = null;
-        renderUserHeader();
-        loadData();
+    function changeWeek() {
+        currentWeek = parseInt(document.getElementById('weekSelect').value);
+        loadWeek(CURRENT_SEASON, currentWeek);
     }
 
-    async function loadData() {
-        userPicks = {};
-        userTiebreakerMargin = null;
+    function renderTeamStatsBlock(teamName, statsMap) {
+        const stats = statsMap ? statsMap[teamName] : null;
 
-        if (currentUser && currentUser.id) {
-            try {
-                const picksRes = await fetch(`/api/picks/${currentUser.id}/${currentSeason}/${selectedWeek}`);
-                if (picksRes.ok) {
-                    const pickDoc = await picksRes.json();
-                    userPicks = pickDoc.picks || {};
-                    userTiebreakerMargin = pickDoc.tiebreakerMargin ?? null;
-                }
-            } catch (err) {
-                console.warn("Sem palpites salvos no momento:", err);
-            }
+        if (!stats || stats.gamesPlayed === 0) {
+            return '<div class="text-[11px] text-slate-500 mt-2 italic text-center w-full">Sem jogos anteriores</div>';
         }
+
+        const record = stats.wins + '-' + stats.losses + (stats.ties > 0 ? '-' + stats.ties : '');
+        const recent = (stats.recentResults && stats.recentResults.length > 0)
+            ? stats.recentResults.slice(-2).join(' | ')
+            : '';
+
+        return '<div class="mt-2 pt-2 border-t border-slate-800 text-left w-full">' +
+            '<div class="flex items-center justify-between text-[11px] text-slate-400">' +
+            '<span class="font-bold text-amber-400">' + record + '</span>' +
+            '<span>' + stats.pointsForPerGame + ' pts pró</span>' +
+            '<span>' + stats.pointsAgainstPerGame + ' contra</span>' +
+            '</div>' +
+            (recent ? '<div class="text-[10px] text-slate-400 truncate mt-1" title="' + stats.recentResults.join('\n') + '">Últimos: ' + recent + '</div>' : '') +
+            '</div>';
+    }
+
+    async function loadWeek(season, weekNumber) {
+        const grid = document.getElementById('gamesGrid');
+        grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Carregando rodada...</div>';
 
         try {
-            const res = await fetch(`/api/weeks/${currentSeason}/${selectedWeek}`);
+            const res = await fetch('/api/weeks/' + season + '/' + weekNumber);
             if (!res.ok) {
-                throw new Error("HTTP " + res.status);
+                grid.innerHTML = '<div class="col-span-full py-12 text-center text-amber-400">Nenhum dado cadastrado para a Semana ' + weekNumber + ' (' + season + ').</div>';
+                document.getElementById('tiebreakerCard').classList.add('hidden');
+                return;
             }
-            const weekData = await res.json();
-            tiebreakerGameId = weekData.tiebreakerGameId || null;
-            renderGames(weekData.games || []);
+            activeWeekData = await res.json();
+
+            // Busca retrospecto dos times
+            currentStatsMap = {};
+            try {
+                const statsRes = await fetch('/api/stats/' + season + '/before-week/' + weekNumber);
+                if (statsRes.ok) currentStatsMap = await statsRes.json();
+            } catch (e) {
+                console.warn('Estatísticas prévias não disponíveis:', e);
+            }
+
+            // Busca palpites do usuário
+            userPicks = {};
+            let userTiebreakerMargin = null;
+            const userId = currentUser ? (currentUser.id || currentUser.userId || currentUser._id) : null;
+
+            if (userId) {
+                try {
+                    const picksRes = await fetch('/api/picks/' + userId + '/' + season + '/' + weekNumber);
+                    if (picksRes.ok) {
+                        const userPickData = await picksRes.json();
+                        if (userPickData && userPickData.picks) {
+                            userPicks = userPickData.picks;
+                        }
+                        if (userPickData && userPickData.tiebreakerMargin != null) {
+                            userTiebreakerMargin = userPickData.tiebreakerMargin;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Palpites do usuário ainda não encontrados:', e);
+                }
+            }
+
+            renderGames(activeWeekData.games || [], currentStatsMap, activeWeekData.tiebreakerGameId);
+            renderTiebreakerCard(activeWeekData, userTiebreakerMargin);
+
         } catch (err) {
-            document.getElementById('gamesGrid').innerHTML = `
-          <div class="col-span-full bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-xl text-sm">
-            Nenhum confronto carregado para a Semana ${selectedWeek} ainda.
-          </div>
-        `;
+            console.error('Erro ao processar rodada:', err);
+            grid.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">Falha ao carregar confrontos da semana.</div>';
+            document.getElementById('tiebreakerCard').classList.add('hidden');
         }
     }
 
-    function renderGames(games) {
-        const container = document.getElementById('gamesGrid');
-        container.innerHTML = '';
+    function renderGames(games, statsMap, tiebreakerGameId) {
+        const grid = document.getElementById('gamesGrid');
+        grid.innerHTML = '';
 
-        if (games.length === 0) {
-            container.innerHTML = '<p class="text-slate-400 col-span-full">Nenhum confronto disponível para esta semana.</p>';
+        if (!games || games.length === 0) {
+            grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500">Nenhum jogo cadastrado nesta semana.</div>';
             return;
         }
 
         games.forEach(game => {
-            const isFinal = game.status === 'FINAL';
+            const isFinal = game.status === 'STATUS_FINAL' || game.status === 'FINAL';
             const isTiebreaker = (game.id === tiebreakerGameId);
-            const userPick = userPicks[game.id];
-
-            const isAwayPick = userPick === game.awayTeam;
-            const isHomePick = userPick === game.homeTeam;
-
-            const isAwayWinner = isFinal && game.winnerTeam === game.awayTeam;
-            const isHomeWinner = isFinal && game.winnerTeam === game.homeTeam;
+            const picked = userPicks[game.id];
 
             const card = document.createElement('div');
-            card.className = `bg-slate-900 border ${isTiebreaker ? 'border-amber-500/80 shadow-amber-500/10 shadow-lg' : 'border-slate-800'} rounded-xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-slate-700 transition`;
+            card.className = 'bg-slate-900 border ' + (isTiebreaker ? 'border-amber-500/50 shadow-amber-500/10 shadow-lg' : 'border-slate-800') + ' rounded-xl p-4 flex flex-col justify-between relative overflow-hidden';
 
-            // Bloco extra de Tiebreaker caso seja o jogo escolhido para desempate
-            let tiebreakerHtml = '';
+            let tiebreakerBadge = '';
             if (isTiebreaker) {
-                tiebreakerHtml = `
-            <div class="mt-3 p-3 bg-amber-950/30 border border-amber-800/60 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div>
-                <span class="text-xs font-bold text-amber-400 uppercase tracking-wide flex items-center gap-1">
-                  ⭐ Jogo do Desempate (Tiebreaker)
-                </span>
-                <p class="text-[11px] text-slate-400">Por quantos pontos de diferença o vencedor vai ganhar?</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <input type="number" id="tiebreakerMarginInput" min="1" max="99"
-                       placeholder="Ex: 7"
-                       value="${userTiebreakerMargin ?? ''}"
-                       ${isFinal ? 'disabled' : ''}
-                       class="w-20 text-center bg-slate-800 border border-amber-700/60 rounded-md py-1 px-2 text-sm text-amber-300 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                <button onclick="saveTiebreakerMargin()"
-                        ${isFinal ? 'disabled' : ''}
-                        class="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-md transition">
-                  Salvar
-                </button>
-              </div>
-            </div>
-          `;
+                tiebreakerBadge = '<div class="absolute top-0 right-0 bg-amber-500 text-slate-950 font-bold text-[10px] uppercase px-2 py-0.5 rounded-bl">' +
+                    '<i class="fa-solid fa-star mr-1"></i> Desempate' +
+                    '</div>';
             }
 
-            card.innerHTML = `
-          <div class="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800 pb-2">
-            <span>${formatDate(game.kickOff)}</span>
-            <div class="flex items-center gap-1.5">
-              ${isTiebreaker ? '<span class="px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px]">TIEBREAKER</span>' : ''}
-              <span class="px-2 py-0.5 rounded-full font-bold ${isFinal ? 'bg-slate-800 text-slate-300' : 'bg-green-950 text-green-400 border border-green-800'}">
-                ${isFinal ? 'FINAL' : 'EM BREVE'}
-              </span>
-            </div>
-          </div>
+            const dateStr = game.kickOff ? new Date(game.kickOff).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'A definir';
+            const awayCode = (game.awayTeam || 'NFL').toString().trim().toLowerCase();
+            const homeCode = (game.homeTeam || 'NFL').toString().trim().toLowerCase();
 
-          <div class="grid grid-cols-2 gap-3">
-            <!-- Time Visitante -->
-            <button onclick="submitPick('${game.id}', '${game.awayTeam}', ${isFinal})"
-              class="relative flex flex-col items-center gap-2 p-3 rounded-lg border transition ${
-                isAwayPick
-                    ? 'bg-blue-950/60 border-blue-500 ring-2 ring-blue-500/50'
-                    : 'bg-slate-800/40 border-slate-700/60 hover:bg-slate-800'
-            } ${isAwayWinner ? 'ring-2 ring-green-500' : ''}">
-              <img src="${game.awayLogo || ''}" alt="${game.awayTeam}" class="w-12 h-12 object-contain drop-shadow" />
-              <div class="text-center">
-                <span class="font-bold text-sm text-slate-100 block">${game.awayTeam}</span>
-                ${isFinal ? `<span class="text-lg font-black text-slate-300">${game.awayScore ?? ''}</span>` : ''}
-              </div>
-              ${isAwayPick ? '<span class="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full mt-1">SEU PALPITE</span>' : ''}
-            </button>
+            const awayLogo = game.awayLogo || ('https://a.espncdn.com/i/teamlogos/nfl/500/' + awayCode + '.png');
+            const homeLogo = game.homeLogo || ('https://a.espncdn.com/i/teamlogos/nfl/500/' + homeCode + '.png');
 
-            <!-- Time Mandante -->
-            <button onclick="submitPick('${game.id}', '${game.homeTeam}', ${isFinal})"
-              class="relative flex flex-col items-center gap-2 p-3 rounded-lg border transition ${
-                isHomePick
-                    ? 'bg-blue-950/60 border-blue-500 ring-2 ring-blue-500/50'
-                    : 'bg-slate-800/40 border-slate-700/60 hover:bg-slate-800'
-            } ${isHomeWinner ? 'ring-2 ring-green-500' : ''}">
-              <img src="${game.homeLogo || ''}" alt="${game.homeTeam}" class="w-12 h-12 object-contain drop-shadow" />
-              <div class="text-center">
-                <span class="font-bold text-sm text-slate-100 block">${game.homeTeam}</span>
-                ${isFinal ? `<span class="text-lg font-black text-slate-300">${game.homeScore ?? ''}</span>` : ''}
-              </div>
-              ${isHomePick ? '<span class="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full mt-1">SEU PALPITE</span>' : ''}
-            </button>
-          </div>
+            card.innerHTML = tiebreakerBadge +
+                '<div class="flex justify-between items-center text-xs text-slate-400 mb-3">' +
+                '<span><i class="fa-regular fa-clock mr-1"></i> ' + dateStr + '</span>' +
+                '<span class="font-semibold ' + (isFinal ? 'text-emerald-400' : 'text-blue-400') + '">' + (game.status || 'SCHEDULED') + '</span>' +
+                '</div>' +
+                '<div class="grid grid-cols-2 gap-3 mb-2">' +
+                // Botão Visitante
+                '<button onclick="pickTeam(\'' + game.id + '\', \'' + game.awayTeam + '\')" class="p-3 rounded-lg border text-center transition flex flex-col justify-between items-center ' + (picked === game.awayTeam ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 text-slate-200') + '">' +
+                '<div class="flex flex-col items-center w-full">' +
+                '<img src="' + awayLogo + '" alt="' + game.awayTeam + '" class="w-12 h-12 object-contain mb-2 drop-shadow" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/' + awayCode + '.png\';">' +
+                '<div class="font-bold text-sm tracking-wide">' + (game.awayTeam || '-') + '</div>' +
+                (isFinal ? '<div class="text-xl font-extrabold mt-1 text-white">' + (game.awayScore ?? 0) + '</div>' : '') +
+                '</div>' +
+                renderTeamStatsBlock(game.awayTeam, statsMap) +
+                '</button>' +
 
-          ${tiebreakerHtml}
-        `;
-            container.appendChild(card);
+                // Botão Mandante
+                '<button onclick="pickTeam(\'' + game.id + '\', \'' + game.homeTeam + '\')" class="p-3 rounded-lg border text-center transition flex flex-col justify-between items-center ' + (picked === game.homeTeam ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 text-slate-200') + '">' +
+                '<div class="flex flex-col items-center w-full">' +
+                '<img src="' + homeLogo + '" alt="' + game.homeTeam + '" class="w-12 h-12 object-contain mb-2 drop-shadow" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/' + homeCode + '.png\';">' +
+                '<div class="font-bold text-sm tracking-wide">' + (game.homeTeam || '-') + '</div>' +
+                (isFinal ? '<div class="text-xl font-extrabold mt-1 text-white">' + (game.homeScore ?? 0) + '</div>' : '') +
+                '</div>' +
+                renderTeamStatsBlock(game.homeTeam, statsMap) +
+                '</button>' +
+                '</div>';
+
+            grid.appendChild(card);
         });
     }
 
+    function renderTiebreakerCard(weekData, existingMargin) {
+        const card = document.getElementById('tiebreakerCard');
+        const desc = document.getElementById('tiebreakerGameDescription');
+        const input = document.getElementById('tiebreakerMarginInput');
+
+        if (!weekData || !weekData.games || weekData.games.length === 0) {
+            card.classList.add('hidden');
+            return;
+        }
+
+        // Identifica o jogo de desempate (o marcado como tiebreaker ou o último da rodada)
+        let tbGame = null;
+        if (weekData.tiebreakerGameId) {
+            tbGame = weekData.games.find(g => g.id === weekData.tiebreakerGameId);
+        }
+        if (!tbGame && weekData.games.length > 0) {
+            tbGame = weekData.games[weekData.games.length - 1];
+        }
+
+        if (tbGame) {
+            desc.textContent = 'Último jogo: ' + tbGame.awayTeam + ' @ ' + tbGame.homeTeam + '. Insira a margem de pontos prevista da vitória.';
+        }
+
+        input.value = (existingMargin !== null && existingMargin !== undefined) ? existingMargin : '';
+        card.classList.remove('hidden');
+    }
+
+    async function pickTeam(gameId, team) {
+        const userId = currentUser ? (currentUser.id || currentUser.userId || currentUser._id) : null;
+        if (!userId) {
+            openLoginModal();
+            return;
+        }
+
+        userPicks[gameId] = team;
+        renderGames(activeWeekData.games || [], currentStatsMap, activeWeekData.tiebreakerGameId);
+
+        await sendPicksToBackend();
+    }
+
     async function saveTiebreakerMargin() {
-        if (!currentUser || !currentUser.id) {
+        const userId = currentUser ? (currentUser.id || currentUser.userId || currentUser._id) : null;
+        if (!userId) {
             openLoginModal();
             return;
         }
 
         const input = document.getElementById('tiebreakerMarginInput');
-        if (!input || input.value === '') {
-            alert("Digite a quantidade de pontos da margem de vitória.");
+        const margin = parseInt(input.value);
+
+        if (isNaN(margin) || margin <= 0) {
+            alert('Informe uma margem de pontos válida (maior que 0).');
             return;
         }
 
-        const margin = parseInt(input.value, 10);
-        userTiebreakerMargin = margin;
+        // Envia para o backend
+        try {
+            const res = await fetch('/api/picks/tiebreaker', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    season: CURRENT_SEASON,
+                    weekNumber: currentWeek,
+                    tiebreakerMargin: margin
+                })
+            });
 
-        await sendPicksPayload();
-        alert("Margem do desempate salva com sucesso!");
+            if (res.ok) {
+                showNotification('Margem de desempate salva com sucesso!', 'success');
+            } else {
+                // Fallback: se o backend esperar tudo dentro de /api/picks
+                await sendPicksToBackend(margin);
+            }
+        } catch (e) {
+            await sendPicksToBackend(margin);
+        }
     }
 
-    async function submitPick(gameId, selectedTeam, isFinal) {
-        if (isFinal) {
-            alert("Esta partida já foi encerrada.");
-            return;
+    async function sendPicksToBackend(overrideMargin) {
+        const userId = currentUser ? (currentUser.id || currentUser.userId || currentUser._id) : null;
+        if (!userId) return;
+
+        const marginInput = document.getElementById('tiebreakerMarginInput');
+        const margin = (overrideMargin !== undefined) ? overrideMargin : (parseInt(marginInput.value) || null);
+
+        const payload = {
+            userId: userId,
+            season: CURRENT_SEASON,
+            weekNumber: currentWeek,
+            picks: userPicks
+        };
+
+        if (margin) {
+            payload.tiebreakerMargin = margin;
         }
 
-        if (!currentUser || !currentUser.id) {
-            openLoginModal();
-            return;
-        }
-
-        userPicks[gameId] = selectedTeam;
-        await sendPicksPayload();
-        loadData();
-    }
-
-    async function sendPicksPayload() {
         try {
             const res = await fetch('/api/picks', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser.id,
-                    season: currentSeason,
-                    weekNumber: selectedWeek,
-                    picks: userPicks,
-                    tiebreakerMargin: userTiebreakerMargin
-                })
+                body: JSON.stringify(payload)
             });
 
-            if (!res.ok) {
-                const err = await res.text();
-                alert("Não foi possível salvar: " + err);
+            if (res.ok) {
+                showNotification('Palpite salvo com sucesso!', 'success');
+            } else {
+                const errDetail = await res.text();
+                showNotification('Erro ao salvar palpite: ' + errDetail, 'error');
             }
         } catch (e) {
-            alert("Erro de conexão ao enviar palpite.");
+            console.error('Erro de conexão ao salvar palpite:', e);
+            showNotification('Erro de conexão ao salvar palpite.', 'error');
         }
     }
 
-    async function loadRanking() {
-        const tbody = document.getElementById('rankingTableBody');
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando ranking...</td></tr>';
+    async function openLeaderboardModal() {
+        const modal = document.getElementById('leaderboardModal');
+        const tbody = document.getElementById('leaderboardBody');
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando pontuações...</td></tr>';
+        modal.classList.remove('hidden');
 
         try {
-            const res = await fetch(`/api/leaderboard/${currentSeason}`);
-            const data = await res.json();
+            const res = await fetch('/api/leaderboard/' + CURRENT_SEASON);
+            if (!res.ok) throw new Error('Erro ao carregar leaderboard');
+            const ranking = await res.json();
 
             tbody.innerHTML = '';
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum participante pontuou ainda nesta temporada.</td></tr>';
+            if (!ranking || ranking.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum palpite computado ainda.</td></tr>';
                 return;
             }
 
-            data.forEach((row, index) => {
-                const tr = document.createElement('tr');
-                const isTop1 = index === 0;
-                tr.className = isTop1 ? "bg-amber-500/10 font-bold" : "hover:bg-slate-800/40";
+            ranking.forEach((u, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-800/40 border-b border-slate-800/40';
 
-                const name = row.displayName || row.userName || row.username || row.userId || "Participante";
-                const points = row.points ?? row.correctPicks ?? row.score ?? 0;
-                const total = row.totalPicks ?? row.total ?? "-";
+                const position = u.rank || (index + 1);
+                let posBadge = '<span class="font-medium text-slate-400">' + position + 'º</span>';
+                if (position === 1) posBadge = '<span class="text-amber-400 font-bold"><i class="fa-solid fa-medal"></i> 1º</span>';
+                if (position === 2) posBadge = '<span class="text-slate-300 font-bold"><i class="fa-solid fa-medal"></i> 2º</span>';
+                if (position === 3) posBadge = '<span class="text-amber-600 font-bold"><i class="fa-solid fa-medal"></i> 3º</span>';
 
-                tr.innerHTML = `
-            <td class="py-3.5 px-4 font-black ${isTop1 ? 'text-amber-400' : 'text-slate-400'}">#${index + 1}</td>
-            <td class="py-3.5 px-4 text-slate-200">${name}</td>
-            <td class="py-3.5 px-4 text-center font-bold text-green-400">${points} pts</td>
-            <td class="py-3.5 px-4 text-right text-slate-400">${total}</td>
-          `;
-                tbody.appendChild(tr);
+                const name = u.displayName || u.username || u.name || ('Participante ' + position);
+                const points = u.totalPoints ?? 0;
+                const tiebreakerDiff = (u.tiebreakerDifference != null) ? u.tiebreakerDifference + ' pts' : '-';
+
+                row.innerHTML = '<td class="px-4 py-3">' + posBadge + '</td>' +
+                    '<td class="px-4 py-3 font-semibold text-slate-200">' + name + '</td>' +
+                    '<td class="px-4 py-3 text-center text-emerald-400 font-bold">' + points + '</td>' +
+                    '<td class="px-4 py-3 text-center text-slate-400">' + tiebreakerDiff + '</td>';
+                tbody.appendChild(row);
             });
-        } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-red-400">Erro ao buscar classificação: ${e.message}</td></tr>`;
+
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-red-400">Falha ao carregar ranking.</td></tr>';
         }
     }
 
-    function switchTab(tab) {
-        const gamesSec = document.getElementById('gamesSection');
-        const rankSec = document.getElementById('rankingSection');
-        const tabGames = document.getElementById('tabGamesBtn');
-        const tabRank = document.getElementById('tabRankBtn');
-
-        if (tab === 'games') {
-            gamesSec.classList.remove('hidden');
-            rankSec.classList.add('hidden');
-            tabGames.className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-blue-500 text-blue-400";
-            tabRank.className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200";
-            loadData();
-        } else {
-            gamesSec.classList.add('hidden');
-            rankSec.classList.remove('hidden');
-            tabRank.className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-blue-500 text-blue-400";
-            tabGames.className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200";
-            loadRanking();
-        }
+    function closeLeaderboardModal() {
+        document.getElementById('leaderboardModal').classList.add('hidden');
     }
 
-    function formatDate(iso) {
-        if (!iso) return "A definir";
-        const d = new Date(iso);
-        return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    function showNotification(msg, type) {
+        const banner = document.getElementById('notificationBanner');
+        const message = document.getElementById('notificationMessage');
+        message.textContent = msg;
+
+        let colorClasses = 'bg-blue-950/80 border border-blue-500 text-blue-300';
+        if (type === 'success') {
+            colorClasses = 'bg-emerald-950/80 border border-emerald-500 text-emerald-300';
+        } else if (type === 'error') {
+            colorClasses = 'bg-red-950/80 border border-red-500 text-red-300';
+        }
+
+        banner.className = 'mb-6 p-4 rounded-lg text-sm flex items-center justify-between ' + colorClasses;
+        banner.classList.remove('hidden');
+        setTimeout(() => { hideNotification(); }, 4000);
     }
 
-    (async () => {
-        initWeekSelector();
-
-        const saved = localStorage.getItem('pickem_auth_user');
-        if (saved) {
-            try {
-                currentUser = JSON.parse(saved);
-            } catch (e) {
-                currentUser = null;
-            }
-        }
-        renderUserHeader();
-
-        await detectCurrentWeek();
-        loadData();
-    })();
+    function hideNotification() {
+        document.getElementById('notificationBanner').classList.add('hidden');
+    }
 </script>
 </body>
 </html>
