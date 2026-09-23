@@ -12,5 +12,7 @@ public record PickRequest(
         int weekNumber,
 
         @NotEmpty(message = "Você deve enviar ao menos um palpite")
-        Map<String, String> picks // chave: gameId ("game-1"), valor: time vencedor ("KC")
+        Map<String, String> picks, // chave: gameId, valor: time vencedor
+
+        Integer tiebreakerMargin // Margem de vitória para desempate
 ) {}

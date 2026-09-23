@@ -9,6 +9,7 @@ import com.java.fernando.nflpickem.repository.WeekRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,16 +33,6 @@ public class PickService {
         Map<String, Game> gameMap = week.getGames().stream()
                 .collect(Collectors.toMap(Game::getId, g -> g));
 
-        Instant now = Instant.now();
-
-        // Validação: impede palpite se o jogo já começou
-        for (Map.Entry<String, String> entry : request.picks().entrySet()) {
-            Game game = gameMap.get(entry.getKey());
-            if (game != null && game.getKickOff() != null && now.isAfter(game.getKickOff())) {
-                throw excitingGameAlreadyStartedException(game.getId());
-            }
-        }
-
         UserPick userPick = pickRepository.findByUserIdAndSeasonAndWeekNumber(
                         request.userId(), request.season(), request.weekNumber())
                 .orElseGet(() -> {
@@ -52,9 +43,39 @@ public class PickService {
                     return up;
                 });
 
-        userPick.setPicks(request.picks());
-        userPick.setUpdatedAt(Instant.now());
+        Map<String, String> existingPicks = userPick.getPicks() != null ? userPick.getPicks() : new HashMap<>();
+        Instant now = Instant.now();
 
+        // Validação granular: só bloqueia se houver tentativa de alterar jogo que já iniciou
+        for (Map.Entry<String, String> entry : request.picks().entrySet()) {
+            String gameId = entry.getKey();
+            String submittedTeam = entry.getValue();
+            Game game = gameMap.get(gameId);
+
+            if (game != null) {
+                boolean hasStarted = (game.getKickOff() != null && now.isAfter(game.getKickOff()))
+                        || "IN_PROGRESS".equalsIgnoreCase(game.getStatus())
+                        || "FINAL".equalsIgnoreCase(game.getStatus());
+
+                if (hasStarted) {
+                    String previousChoice = existingPicks.get(gameId);
+                    // Se o palpite mudou após o início do confronto, rejeita
+                    if (previousChoice == null || !previousChoice.equalsIgnoreCase(submittedTeam)) {
+                        throw excitingGameAlreadyStartedException(game.getId());
+                    }
+                }
+            }
+        }
+
+        // Faz o merge apenas dos jogos válidos
+        existingPicks.putAll(request.picks());
+        userPick.setPicks(existingPicks);
+
+        if (request.tiebreakerMargin() != null) {
+            userPick.setTiebreakerMargin(request.tiebreakerMargin());
+        }
+
+        userPick.setUpdatedAt(Instant.now());
         return pickRepository.save(userPick);
     }
 
