@@ -32,12 +32,12 @@
             <h1 class="text-xl font-bold tracking-wider text-white">NFL PICK'EM</h1>
         </div>
 
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-3">
             <div id="userGreeting" class="hidden text-sm text-slate-300">
                 Olá, <span id="userNameDisplay" class="font-bold text-amber-400"></span>
             </div>
-            <button id="authBtn" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded font-medium transition">
-                Entrar
+            <button id="authBtn" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition flex items-center gap-1.5">
+                <i class="fa-solid fa-user"></i> <span>Entrar</span>
             </button>
         </div>
     </div>
@@ -90,25 +90,41 @@
     </div>
 </main>
 
-<!-- Modal Login -->
+<!-- Modal Login Melhorado com Acesso Rápido -->
 <div id="loginModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white">Identifique-se</h3>
-            <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white">&times;</button>
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-user-check text-amber-400"></i> Selecionar Participante
+            </h3>
+            <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
         </div>
-        <p class="text-xs text-slate-400 mb-4">Digite seu e-mail e nome para salvar seus palpites e ver sua pontuação.</p>
-        <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+
+        <!-- Lista rápida de quem já joga -->
+        <div id="quickUserSection" class="mb-4">
+            <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Entrar rápido como:</label>
+            <div id="quickUserList" class="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1 bg-slate-950/50 rounded-lg border border-slate-800">
+                <span class="text-xs text-slate-500 p-2">Carregando participantes...</span>
+            </div>
+        </div>
+
+        <div class="relative flex py-2 items-center">
+            <div class="flex-grow border-t border-slate-800"></div>
+            <span class="flex-shrink mx-3 text-slate-500 text-xs uppercase tracking-wider">ou novo participante</span>
+            <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <form onsubmit="handleLoginSubmit(event)" class="space-y-3 mt-2">
             <div>
                 <label class="block text-xs text-slate-400 mb-1">E-mail</label>
-                <input type="email" id="loginEmail" required class="w-full bg-slate-800 border border-slate-700 text-white rounded p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
+                <input type="email" id="loginEmail" required placeholder="seu@email.com" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
             <div>
                 <label class="block text-xs text-slate-400 mb-1">Nome / Apelido</label>
-                <input type="text" id="loginName" required class="w-full bg-slate-800 border border-slate-700 text-white rounded p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
+                <input type="text" id="loginName" required placeholder="Ex: Fernando" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">
-                Acessar
+                Entrar / Cadastrar
             </button>
         </form>
     </div>
@@ -145,7 +161,17 @@
 <!-- Lógica JavaScript -->
 <script>
     const CURRENT_SEASON = 2026;
-    let currentUser = JSON.parse(localStorage.getItem('nfl_user') || 'null');
+
+    function getSavedUser() {
+        try {
+            const item = localStorage.getItem('nfl_user');
+            return item ? JSON.parse(item) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    let currentUser = getSavedUser();
     let currentWeek = 2;
     let activeWeekData = null;
     let currentStatsMap = {};
@@ -170,6 +196,7 @@
     }
 
     function checkUserAuth() {
+        currentUser = getSavedUser();
         const greeting = document.getElementById('userGreeting');
         const nameDisplay = document.getElementById('userNameDisplay');
         const authBtn = document.getElementById('authBtn');
@@ -177,29 +204,70 @@
         if (currentUser && (currentUser.id || currentUser.userId || currentUser._id)) {
             greeting.classList.remove('hidden');
             nameDisplay.textContent = currentUser.displayName || currentUser.username || currentUser.name || currentUser.email;
-            authBtn.textContent = 'Sair';
-            authBtn.className = 'bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded font-medium transition';
+            authBtn.className = 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5';
+            authBtn.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket"></i> <span>Trocar</span>';
         } else {
             greeting.classList.add('hidden');
-            authBtn.textContent = 'Entrar';
-            authBtn.className = 'bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded font-medium transition';
+            authBtn.className = 'bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition flex items-center gap-1.5';
+            authBtn.innerHTML = '<i class="fa-solid fa-user"></i> <span>Entrar</span>';
         }
     }
 
     function handleAuthClick() {
         if (currentUser) {
-            localStorage.removeItem('nfl_user');
-            currentUser = null;
-            userPicks = {};
-            checkUserAuth();
-            loadWeek(CURRENT_SEASON, currentWeek);
+            if (confirm('Deseja trocar de participante ou sair?')) {
+                localStorage.removeItem('nfl_user');
+                currentUser = null;
+                userPicks = {};
+                checkUserAuth();
+                loadWeek(CURRENT_SEASON, currentWeek);
+                openLoginModal();
+            }
         } else {
             openLoginModal();
         }
     }
 
-    function openLoginModal() {
+    async function openLoginModal() {
         document.getElementById('loginModal').classList.remove('hidden');
+        const quickSection = document.getElementById('quickUserSection');
+        const quickList = document.getElementById('quickUserList');
+        quickList.innerHTML = '<span class="text-xs text-slate-500 p-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando participantes...</span>';
+
+        try {
+            const res = await fetch('/api/leaderboard/' + CURRENT_SEASON);
+            if (res.ok) {
+                const ranking = await res.json();
+                if (ranking && ranking.length > 0) {
+                    quickList.innerHTML = '';
+                    ranking.forEach(u => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'bg-slate-800 hover:bg-amber-500/20 hover:border-amber-400 border border-slate-700 text-slate-200 hover:text-amber-300 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-2 shadow-sm';
+                        btn.innerHTML = '<i class="fa-solid fa-circle-user text-amber-400"></i> ' + (u.displayName || u.username || u.name);
+                        btn.onclick = () => {
+                            currentUser = {
+                                id: u.userId || u.id,
+                                userId: u.userId || u.id,
+                                displayName: u.displayName || u.username || u.name,
+                                email: u.email || ''
+                            };
+                            localStorage.setItem('nfl_user', JSON.stringify(currentUser));
+                            closeLoginModal();
+                            checkUserAuth();
+                            loadWeek(CURRENT_SEASON, currentWeek);
+                            showNotification('Conectado como ' + (currentUser.displayName) + '!', 'success');
+                        };
+                        quickList.appendChild(btn);
+                    });
+                    quickSection.classList.remove('hidden');
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Não foi possível pré-carregar lista rápida:', e);
+        }
+        quickSection.classList.add('hidden');
     }
 
     function closeLoginModal() {
@@ -237,6 +305,9 @@
 
             if (res.ok) {
                 currentUser = await res.json();
+                if (!currentUser.id && currentUser.userId) {
+                    currentUser.id = currentUser.userId;
+                }
                 localStorage.setItem('nfl_user', JSON.stringify(currentUser));
                 closeLoginModal();
                 checkUserAuth();
@@ -283,7 +354,7 @@
                         <span class="text-[10px] text-slate-500 font-mono">${stats.gamesPlayed}J</span>
                     </div>
 
-                    <!-- Gráfico: Pontos Pró (Ataque) -->
+                    <!-- Ataque -->
                     <div class="space-y-0.5">
                         <div class="flex justify-between text-[10px]">
                             <span class="text-slate-400">Ataque</span>
@@ -294,7 +365,7 @@
                         </div>
                     </div>
 
-                    <!-- Gráfico: Pontos Contra (Defesa) -->
+                    <!-- Defesa -->
                     <div class="space-y-0.5">
                         <div class="flex justify-between text-[10px]">
                             <span class="text-slate-400">Defesa</span>
