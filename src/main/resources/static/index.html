@@ -163,16 +163,38 @@
     }
 
     let currentUser = getSavedUser();
-    let currentWeek = 2;
+    let currentWeek = 1; // Valor temporário até o backend responder
     let activeWeekData = null;
     let currentStatsMap = {};
     let userPicks = {};
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         initWeekSelector();
         checkUserAuth();
-        loadWeek(CURRENT_SEASON, currentWeek);
+        await autoDetectAndLoadCurrentWeek();
     });
+
+    // Consulta a semana que está acontecendo agora e atualiza a tela
+    async function autoDetectAndLoadCurrentWeek() {
+        try {
+            const res = await fetch('/api/weeks/current');
+            if (res.ok) {
+                const activeWeek = await res.json();
+                if (activeWeek && activeWeek.weekNumber) {
+                    currentWeek = activeWeek.weekNumber;
+                    const select = document.getElementById('weekSelect');
+                    if (select) {
+                        select.value = currentWeek;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Não foi possível identificar a semana corrente automaticamente:', e);
+        }
+
+        // Carrega os jogos da semana atual identificada
+        loadWeek(CURRENT_SEASON, currentWeek);
+    }
 
     function initWeekSelector() {
         const select = document.getElementById('weekSelect');

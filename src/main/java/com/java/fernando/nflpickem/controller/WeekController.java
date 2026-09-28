@@ -28,9 +28,14 @@ public class WeekController {
 
     @GetMapping("/current")
     public ResponseEntity<Week> getCurrentWeek() {
-        return weekRepository.findByCurrentTrue()
+        return weekRepository.findAll().stream()
+                .filter(Week::isCurrent)
+                .findFirst()
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> weekRepository.findAll().stream()
+                        .max(java.util.Comparator.comparingInt(Week::getWeekNumber))
+                        .map(ResponseEntity::ok)
+                        .orElse(ResponseEntity.notFound().build()));
     }
 
     // Rota para sincronizar manualmente qualquer semana
