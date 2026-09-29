@@ -66,7 +66,7 @@
         <button onclick="hideNotification()" class="text-slate-400 hover:text-white">&times;</button>
     </div>
 
-    <!-- 1. Barra de Progresso dos Palpites -->
+    <!-- Barra de Progresso dos Palpites -->
     <div id="pickProgressBarContainer" class="hidden mb-4 bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
             <div class="flex items-center space-x-2">
@@ -89,11 +89,11 @@
         </div>
     </div>
 
-    <!-- Card de Veredito da Rodada com Memes & Sarcasmo -->
+    <!-- Veredito da Rodada com Memes da NFL -->
     <div id="performanceVerdictCard" class="hidden mb-6 rounded-xl p-4 border transition-all">
     </div>
 
-    <!-- 3. Filtros Rápidos de Confrontos -->
+    <!-- Filtros Rápidos de Confrontos -->
     <div id="filterContainer" class="flex flex-wrap items-center gap-2 mb-6">
         <span class="text-xs font-semibold text-slate-500 uppercase mr-1">Filtrar:</span>
         <button type="button" onclick="setFilter('ALL')" id="filterBtn_ALL" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-amber-500 text-slate-950 shadow">
@@ -124,7 +124,7 @@
                 <i class="fa-solid fa-star text-amber-400 text-xl"></i>
                 <div>
                     <h3 class="text-base font-bold text-amber-300">Jogo do Desempate (Tiebreaker)</h3>
-                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Digite a margem final de vitória prevista para o último jogo.</p>
+                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Insira a margem final de vitória prevista para o último jogo.</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
@@ -148,7 +148,7 @@
         </div>
 
         <p class="text-xs text-slate-400 mb-4">
-            Digite seus dados uma única vez. Seu login ficará salvo de forma permanente neste aparelho.
+            Insira seus dados uma única vez. A sessão permanecerá salva neste aparelho.
         </p>
 
         <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
@@ -157,7 +157,7 @@
                 <input type="email" id="loginEmail" required placeholder="seu@email.com" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
             <div>
-                <label class="block text-xs text-slate-400 mb-1">Seu Nome / Apelido</label>
+                <label class="block text-xs text-slate-400 mb-1">Nome / Apelido</label>
                 <input type="text" id="loginName" required placeholder="Ex: Bugão" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2.5 text-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
@@ -167,7 +167,7 @@
     </div>
 </div>
 
-<!-- 5. Modal Leaderboard com Abas -->
+<!-- Modal Leaderboard com Abas e Resenha da Transmissão -->
 <div id="leaderboardModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
         <div class="flex justify-between items-center mb-4">
@@ -178,14 +178,18 @@
             <button onclick="closeLeaderboardModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
         </div>
 
-        <!-- Abas do Ranking -->
+        <!-- Abas do Leaderboard -->
         <div class="flex gap-2 border-b border-slate-800 pb-3 mb-3">
             <button id="tabLeaderboardSeason" onclick="switchLeaderboardTab('SEASON')" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition">
-                Classificação Geral
+                Geral da Temporada
             </button>
             <button id="tabLeaderboardWeek" onclick="switchLeaderboardTab('WEEK')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
                 Semana <span id="leaderboardWeekBadgeNumber"></span>
             </button>
+        </div>
+
+        <!-- Card de Resenha / Empate na Rodada -->
+        <div id="leaderboardTieMessage" class="hidden mb-3 p-3 rounded-lg border border-amber-500/40 bg-amber-950/20 text-xs text-amber-300 flex items-center gap-2">
         </div>
 
         <div class="overflow-y-auto flex-1">
@@ -195,7 +199,7 @@
                     <th class="px-4 py-3 rounded-l-lg">Pos</th>
                     <th class="px-4 py-3">Participante</th>
                     <th class="px-4 py-3 text-center" id="colHeaderPoints">Acertos</th>
-                    <th class="px-4 py-3 text-center rounded-r-lg" id="colHeaderExtra">Dif. Desempate</th>
+                    <th class="px-4 py-3 text-center rounded-r-lg" id="colHeaderExtra">Dif. Tiebreaker</th>
                 </tr>
                 </thead>
                 <tbody id="leaderboardBody" class="divide-y divide-slate-800/60">
@@ -223,10 +227,9 @@
     let activeWeekData = null;
     let currentStatsMap = {};
     let userPicks = {};
-    let leaguePicksConsensus = {};
     let activeFilter = 'ALL';
-    let activeLeaderboardTab = 'SEASON';
     let cachedSeasonLeaderboard = [];
+    let activeLeaderboardTab = 'SEASON';
 
     document.addEventListener('DOMContentLoaded', async () => {
         initWeekSelector();
@@ -235,20 +238,36 @@
     });
 
     async function autoDetectAndLoadCurrentWeek() {
+        let targetWeek = 3; // Padrão seguro para a rodada que acabou de rolar
+
         try {
             const res = await fetch('/api/weeks/current');
             if (res.ok) {
                 const activeWeek = await res.json();
                 if (activeWeek && activeWeek.weekNumber) {
-                    currentWeek = activeWeek.weekNumber;
-                    const select = document.getElementById('weekSelect');
-                    if (select) {
-                        select.value = currentWeek;
+                    // Verifica se a semana retornada pela API já tem jogos cadastrados
+                    const checkWeekRes = await fetch('/api/weeks/' + CURRENT_SEASON + '/' + activeWeek.weekNumber);
+                    if (checkWeekRes.ok) {
+                        const weekData = await checkWeekRes.json();
+                        // Se a semana detectada tem jogos, usa ela; se estiver vazia, volta para a anterior
+                        if (weekData && weekData.games && weekData.games.length > 0) {
+                            targetWeek = activeWeek.weekNumber;
+                        } else if (activeWeek.weekNumber > 1) {
+                            targetWeek = activeWeek.weekNumber - 1;
+                        }
+                    } else if (activeWeek.weekNumber > 1) {
+                        targetWeek = activeWeek.weekNumber - 1;
                     }
                 }
             }
         } catch (e) {
-            console.warn('Não foi possível identificar a semana corrente automaticamente:', e);
+            console.warn('Fallback ativado: carregando semana padrão.', e);
+        }
+
+        currentWeek = targetWeek;
+        const select = document.getElementById('weekSelect');
+        if (select) {
+            select.value = currentWeek;
         }
 
         loadWeek(CURRENT_SEASON, currentWeek);
@@ -263,7 +282,6 @@
             opt.textContent = 'Semana ' + i;
             select.appendChild(opt);
         }
-        select.value = currentWeek;
     }
 
     function checkUserAuth() {
@@ -362,11 +380,11 @@
     }
 
     function changeWeek() {
-        currentWeek = parseInt(document.getElementById('weekSelect').value);
+        const select = document.getElementById('weekSelect');
+        currentWeek = parseInt(select.value);
         loadWeek(CURRENT_SEASON, currentWeek);
     }
 
-    // Filtros Rápidos
     function setFilter(filterType) {
         activeFilter = filterType;
         ['ALL', 'PENDING', 'THU', 'SUN', 'MON'].forEach(f => {
@@ -384,7 +402,6 @@
         }
     }
 
-    // 1. Barra de Progresso
     function updatePickProgress(games, picks, tiebreakerMargin, tiebreakerGameId) {
         const container = document.getElementById('pickProgressBarContainer');
         if (!container) return;
@@ -441,7 +458,7 @@
         }
     }
 
-    // Veredito da Rodada com Memes Brasileiros, Lendas da NFL e Easter Egg de Aura (67%)
+    // Veredito da Rodada exclusivo Paulo Antunes, Everaldo Marques e Lendas da NFL
     function renderPerformanceVerdict(games, picks) {
         const card = document.getElementById('performanceVerdictCard');
         if (!card) return;
@@ -474,7 +491,6 @@
             }
         });
 
-        // Só exibe o veredito após pelo menos 2 jogos finalizados na rodada
         if (finishedCount < 2) {
             card.classList.add('hidden');
             return;
@@ -482,99 +498,93 @@
 
         const winRate = Math.round((correctCount / finishedCount) * 100);
 
-        // 1. Memes de Sarcasmo / Fase Terrível (< 45%)
+        // Resenha com foco na NFL e transmissão da ESPN (< 45%)
         const badMemes = [
             {
-                title: "Que fase! Parece o 'Butt Fumble' do Mark Sanchez! 🍑💥",
-                phrase: "Bateu de cara no próprio companheiro e entregou a bola. Desempenho digno de trapalhada dos Jets.",
-                meme: "💀 Trapalhada Histórica"
+                title: "Inacreditável, beeem amigos da ESPN! 🏈🎙️",
+                phrase: "Paulo Antunes já estaria perplexo na cabine! Os turnovers castigaram a sua rodada, mas a temporada é longa.",
+                meme: "🎙️ Paulo Antunes"
+            },
+            {
+                title: "Que fase! Lembra o 'Butt Fumble' do Mark Sanchez! 🍑💥",
+                phrase: "Trapalhada clássica de domingo. A bola oval bateu no capacete e saiu voando, mas dá pra recuperar na próxima semana!",
+                meme: "💀 Trapalhada Clássica"
             },
             {
                 title: "Russell Wilson: 'Pick'Em Country, Let's Cry!' 😭",
-                phrase: "Entende muito de NFL, confia! Seus palpites afundaram mais rápido que a linha ofensiva dos Giants.",
-                meme: "📉 O Desastre em Campo"
-            },
-            {
-                title: "Apostou de olho fechado ou jogou moeda pra cima? 🤡",
-                phrase: "Inacreditável! Até o kicker chutando contra o vento de Chicago teria acertado mais confrontos.",
-                meme: "🤦‍♂️ Deu Aula de Como Errar"
-            },
-            {
-                title: "Ih, rapaz! Chamem o VAR nos seus palpites! 🚨",
-                phrase: "Não acertou nem a cor do uniforme dos times. A lanterna da liga tem dono fixo essa semana.",
-                meme: "🔦 Lanterna da Rodada"
+                phrase: "A linha ofensiva cedeu pressão em todas as descidas. A zebra passeou forte nos gramados da rodada.",
+                meme: "📉 Sack na Rodada"
             }
         ];
 
-        // 2. Memes de Desempenho Neutro / Muro (45% a 69%)
+        // Parelho / Meio de tabela (45% a 69%)
         const okMemes = [
             {
-                title: "Na média... tipo Kirk Cousins no horário nobre! 😐",
-                phrase: "Nem passa vergonha absoluta, nem bota medo na liga. Ficou ali no meio da tabela no clássico 50/50.",
-                meme: "⚖️ Muro dos Palpites"
+                title: "TEMOOOS UM JOGO! TEMOOOS UM DJOKO! 🎾🏈🔥",
+                phrase: "No clássico entusiasmo do Paulo Antunes! Confrontos disputados na linha de uma jarda e você vivo na tabela.",
+                meme: "🎙️ Temos um Djoko!"
             },
             {
-                title: "Sobrevivendo ao domingo de resenha! 🫡",
-                phrase: "Não tá bonito de ver, mas pelo menos não vai pagar a pizza da rodada sozinho. Jogo truncado!",
-                meme: "🏈 Fumble Recuperado"
+                title: "Com a faca entre os dentes! ⚔️🏈",
+                phrase: "Paulo Antunes assinaria embaixo: jogo truncado de trincheira, jardas sofridas e você pontuando no sufoco.",
+                meme: "🛡️ Defesa Forte"
             },
             {
-                title: "Segue o baile, o empate moral tá garantido! 🤷‍♂️",
-                phrase: "Errou uns que doeram na alma, mas cravou outros na raça. Digno de overtime sem touchdown.",
-                meme: "⏱️ Fim de Jogo Suado"
+                title: "No ritmo seguro do Kirk Cousins! 💼🕶️",
+                phrase: "Administrando o relógio no quarto período. Sem afobação, mantendo a regularidade rodada a rodada.",
+                meme: "👔 Regularidade"
             }
         ];
 
-        // 3. Memes Épicos / Monstro (>= 70%)
+        // Desempenho Monstro (>= 70%)
         const goodMemes = [
             {
                 title: "VOCÊ É RIDÍCULO! 🤯🎙️",
-                phrase: "No melhor estilo Everaldo Marques! Que leitura de jogo absurda, inacreditável, espetacular!",
-                meme: "👑 VOCÊ É RIDÍCULO!"
+                phrase: "No tom lendário do Everaldo Marques: que espetáculo, que leitura absurda de playbook!",
+                meme: "👑 Everaldo Marques"
             },
             {
-                title: "RECEBA! O verdadeiro Tom Brady da liga! 🐐💍",
-                phrase: "Frio, cirúrgico e com 7 anéis de moral. Buscou a vitória nos últimos minutos igual ao Super Bowl 51!",
-                meme: "🏆 Modo GOAT Ativado"
+                title: "CHAMA O PAPAI! Que rodada monstruosa! 🏈🎙️",
+                phrase: "Paulo Antunes de pé aplaudindo na cabine da ESPN! Cravou quase tudo, leitura de jogo digna de Pro Bowl.",
+                meme: "🔥 Chama o Papai!"
             },
             {
-                title: "Aulas, cria! Tá com o script da NFL no bolso? 📜🔥",
-                phrase: "Botou a liga inteira na roda. Pode tirar print e emoldurar no grupo antes que comecem a chorar.",
-                meme: "🎯 Precisão Absoluta"
+                title: "Modo Tom Brady Ativado! 🐐💍",
+                phrase: "Frio, calculista e com moral de 7 anéis de campeão. O drive final foi simplesmente perfeito!",
+                meme: "🏆 Modo GOAT"
             },
             {
-                title: "Simplesmente imparável, tipo Derrick Henry na redzone! 🚜💨",
-                phrase: "Atropelou todo mundo no ranking. Quem apostou diferente tá procurando o rumo de casa até agora.",
+                title: "Imparável como o Derrick Henry no estouro da linha! 🚜💨",
+                phrase: "Passou por cima da defesa adversária com autoridade total. Desempenho digno de primeira página.",
                 meme: "💪 Trator Ligado"
             }
         ];
 
         let selectedMeme;
-        let borderStyle, bgStyle, textAccent;
-
+        let borderStyle, textAccent;
         const seed = (finishedCount * 3) + correctCount;
 
-        // EASTER EGG DE AURA PARA 67%
+        // EASTER EGG DE AURA (67%)
         if (winRate === 67) {
             selectedMeme = {
                 title: "FARMOU AURA NA SEMANA! 🗿🍷✨",
-                phrase: "Simplesmente +10.000 de Aura acumulados com sucesso. Olhou para os confrontos e disse: 'deixa comigo'. Postura de puro cinema.",
+                phrase: "Simplesmente +10.000 de Aura garantidos. Olhou para os confrontos, respirou fundo e entregou cinema!",
                 meme: "🔮 +10.000 AURA"
             };
             borderStyle = 'border-purple-500/60 bg-gradient-to-r from-purple-950/50 via-slate-900 to-indigo-950/40 shadow-lg shadow-purple-950/40';
             textAccent = 'text-purple-400';
         } else if (winRate < 45) {
             selectedMeme = badMemes[seed % badMemes.length];
-            borderStyle = 'border-rose-500/40 bg-gradient-to-r from-rose-950/40 via-slate-900 to-slate-900 shadow-rose-950/20';
-            textAccent = 'text-rose-400';
+            borderStyle = 'border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900';
+            textAccent = 'text-amber-400';
         } else if (winRate >= 70) {
             selectedMeme = goodMemes[seed % goodMemes.length];
             borderStyle = 'border-emerald-500/50 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 shadow-lg shadow-emerald-950/30';
             textAccent = 'text-emerald-400';
         } else {
             selectedMeme = okMemes[seed % okMemes.length];
-            borderStyle = 'border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900';
-            textAccent = 'text-amber-400';
+            borderStyle = 'border-blue-500/40 bg-gradient-to-r from-blue-950/30 via-slate-900 to-slate-900';
+            textAccent = 'text-blue-400';
         }
 
         card.className = 'mb-6 rounded-xl p-4 border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ' + borderStyle;
@@ -605,10 +615,6 @@
         }
 
         const record = stats.wins + '-' + stats.losses + (stats.ties > 0 ? '-' + stats.ties : '');
-        const recent = (stats.recentResults && stats.recentResults.length > 0)
-            ? stats.recentResults.slice(-2).join(' | ')
-            : '';
-
         const pf = Number(stats.pointsForPerGame) || 0;
         const pa = Number(stats.pointsAgainstPerGame) || 0;
 
@@ -623,7 +629,6 @@
                         <span class="text-[10px] text-slate-500 font-mono">${stats.gamesPlayed}J</span>
                     </div>
 
-                    <!-- Ataque -->
                     <div class="space-y-0.5">
                         <div class="flex justify-between text-[10px]">
                             <span class="text-slate-400">Ataque</span>
@@ -634,7 +639,6 @@
                         </div>
                     </div>
 
-                    <!-- Defesa -->
                     <div class="space-y-0.5">
                         <div class="flex justify-between text-[10px]">
                             <span class="text-slate-400">Defesa</span>
@@ -644,8 +648,6 @@
                             <div style="width: ${paPercent}%" class="bg-rose-500 h-full rounded-full transition-all duration-500"></div>
                         </div>
                     </div>
-
-                    ${recent ? `<div class="text-[9px] text-slate-500 truncate pt-0.5" title="${stats.recentResults.join('\n')}">Últimos: ${recent}</div>` : ''}
                 </div>
             `;
     }
@@ -704,33 +706,6 @@
             `;
     }
 
-    // 4. Barra de Consenso da Liga (Visível apenas após kickoff / bloqueio)
-    function renderLeagueConsensusBar(gameId, awayCode, homeCode, isLocked) {
-        if (!isLocked) return '';
-
-        const consensus = leaguePicksConsensus[gameId];
-        if (!consensus || consensus.total === 0) return '';
-
-        const awayVotes = consensus[awayCode] || 0;
-        const homeVotes = consensus[homeCode] || 0;
-        const awayPct = Math.round((awayVotes / consensus.total) * 100);
-        const homePct = 100 - awayPct;
-
-        return `
-                <div class="mt-2.5 pt-2 border-t border-slate-800/60">
-                    <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
-                        <span><strong class="text-amber-300 font-mono">${awayPct}%</strong> da liga (${awayVotes})</span>
-                        <span class="text-[9px] uppercase tracking-wider text-slate-500 font-semibold"><i class="fa-solid fa-users text-[9px] mr-1"></i> Consenso</span>
-                        <span>(${homeVotes}) <strong class="text-amber-300 font-mono">${homePct}%</strong> da liga</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden flex border border-slate-800">
-                        <div style="width: ${awayPct}%" class="bg-amber-400/90 transition-all duration-500"></div>
-                        <div style="width: ${homePct}%" class="bg-blue-500/90 transition-all duration-500"></div>
-                    </div>
-                </div>
-            `;
-    }
-
     async function loadWeek(season, weekNumber) {
         const grid = document.getElementById('gamesGrid');
         grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Carregando rodada...</div>';
@@ -738,7 +713,7 @@
         try {
             const res = await fetch('/api/weeks/' + season + '/' + weekNumber);
             if (!res.ok) {
-                grid.innerHTML = '<div class="col-span-full py-12 text-center text-amber-400">Nenhum dado cadastrado para a Semana ' + weekNumber + ' (' + season + ').</div>';
+                grid.innerHTML = '<div class="col-span-full py-12 text-center text-amber-400">Nenhum dado encontrado para a Semana ' + weekNumber + ' (' + season + ').</div>';
                 document.getElementById('tiebreakerCard').classList.add('hidden');
                 const progressContainer = document.getElementById('pickProgressBarContainer');
                 if (progressContainer) progressContainer.classList.add('hidden');
@@ -777,48 +752,18 @@
                 }
             }
 
-            // Carrega consenso da rodada
-            leaguePicksConsensus = {};
-            try {
-                const allPicksRes = await fetch('/api/picks/week/' + season + '/' + weekNumber);
-                if (allPicksRes.ok) {
-                    const allWeekPicks = await allPicksRes.json();
-                    if (Array.isArray(allWeekPicks)) {
-                        allWeekPicks.forEach(userSheet => {
-                            if (userSheet.picks) {
-                                Object.entries(userSheet.picks).forEach(([gId, teamCode]) => {
-                                    if (!leaguePicksConsensus[gId]) {
-                                        leaguePicksConsensus[gId] = { total: 0 };
-                                    }
-                                    const cleanTeam = String(teamCode).trim().toUpperCase();
-                                    leaguePicksConsensus[gId][cleanTeam] = (leaguePicksConsensus[gId][cleanTeam] || 0) + 1;
-                                    leaguePicksConsensus[gId].total++;
-                                });
-                            }
-                        });
-                    }
-                }
-            } catch (e) {
-                console.warn('Consenso de votos ainda não disponível via API:', e);
-            }
-
             renderGames(activeWeekData.games || [], currentStatsMap, activeWeekData.tiebreakerGameId);
             renderTiebreakerCard(activeWeekData, userTiebreakerMargin);
             updatePickProgress(activeWeekData.games || [], userPicks, userTiebreakerMargin, activeWeekData.tiebreakerGameId);
             renderPerformanceVerdict(activeWeekData.games || [], userPicks);
 
         } catch (err) {
-            console.error('Erro ao processar rodada:', err);
+            console.error('Erro ao carregar rodada:', err);
             grid.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">Falha ao carregar confrontos da semana.</div>';
             document.getElementById('tiebreakerCard').classList.add('hidden');
-            const progressContainer = document.getElementById('pickProgressBarContainer');
-            if (progressContainer) progressContainer.classList.add('hidden');
-            const verdictCard = document.getElementById('performanceVerdictCard');
-            if (verdictCard) verdictCard.classList.add('hidden');
         }
     }
 
-    // Renderização dos Confrontos com Filtros, Destaques de Resultado e Consenso
     function renderGames(games, statsMap, tiebreakerGameId) {
         const grid = document.getElementById('gamesGrid');
         grid.innerHTML = '';
@@ -876,7 +821,6 @@
                 else winnerCode = 'TIE';
             }
 
-            // 2. Feedback de acerto ou erro
             const isCorrect = isFinal && hasPick && (picked === winnerCode);
             const isWrong = isFinal && hasPick && (winnerCode !== 'TIE') && (picked !== winnerCode);
 
@@ -899,17 +843,11 @@
 
             let topBadge = '';
             if (isCorrect) {
-                topBadge = '<div class="absolute top-0 right-0 bg-emerald-500 text-slate-950 font-bold text-[10px] uppercase px-2.5 py-0.5 rounded-bl shadow flex items-center gap-1">' +
-                    '<i class="fa-solid fa-circle-check"></i> +1 PONTO' +
-                    '</div>';
+                topBadge = '<div class="absolute top-0 right-0 bg-emerald-500 text-slate-950 font-bold text-[10px] uppercase px-2.5 py-0.5 rounded-bl shadow flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> +1 PONTO</div>';
             } else if (isWrong) {
-                topBadge = '<div class="absolute top-0 right-0 bg-rose-500/30 text-rose-300 border-l border-b border-rose-500/40 font-semibold text-[10px] uppercase px-2 py-0.5 rounded-bl flex items-center gap-1">' +
-                    '<i class="fa-solid fa-circle-xmark text-rose-400"></i> NÃO PONTUOU' +
-                    '</div>';
+                topBadge = '<div class="absolute top-0 right-0 bg-rose-500/30 text-rose-300 border-l border-b border-rose-500/40 font-semibold text-[10px] uppercase px-2 py-0.5 rounded-bl flex items-center gap-1"><i class="fa-solid fa-circle-xmark text-rose-400"></i> NÃO PONTUOU</div>';
             } else if (isTiebreaker) {
-                topBadge = '<div class="absolute top-0 right-0 bg-amber-500 text-slate-950 font-bold text-[10px] uppercase px-2 py-0.5 rounded-bl">' +
-                    '<i class="fa-solid fa-star mr-1"></i> Desempate' +
-                    '</div>';
+                topBadge = '<div class="absolute top-0 right-0 bg-amber-500 text-slate-950 font-bold text-[10px] uppercase px-2.5 py-0.5 rounded-bl"><i class="fa-solid fa-star mr-1"></i> Desempate</div>';
             }
 
             let statusColor = 'text-blue-400';
@@ -934,21 +872,12 @@
 
             function getTeamButtonStyle(isTeamSelected, isTeamWinner) {
                 if (isFinal) {
-                    if (isTeamSelected && isCorrect) {
-                        return 'bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400';
-                    }
-                    if (isTeamSelected && isWrong) {
-                        return 'bg-rose-500/20 border-2 border-rose-500/80 text-rose-300 opacity-80';
-                    }
-                    if (isTeamWinner) {
-                        return 'bg-slate-800/80 border-emerald-500/50 text-slate-200';
-                    }
+                    if (isTeamSelected && isCorrect) return 'bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400';
+                    if (isTeamSelected && isWrong) return 'bg-rose-500/20 border-2 border-rose-500/80 text-rose-300 opacity-80';
+                    if (isTeamWinner) return 'bg-slate-800/80 border-emerald-500/50 text-slate-200';
                     return 'bg-slate-900/60 border-slate-800 text-slate-400 opacity-60';
                 }
-
-                if (isTeamSelected) {
-                    return 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-md shadow-amber-500/20 ring-1 ring-amber-400';
-                }
+                if (isTeamSelected) return 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-md shadow-amber-500/20 ring-1 ring-amber-400';
                 return 'bg-slate-800/60 border-slate-700/60 text-slate-200 hover:bg-slate-800';
             }
 
@@ -976,32 +905,24 @@
                 '<span class="font-semibold ' + statusColor + '">' + statusLabel + '</span>' +
                 '</div>' +
                 '<div class="grid grid-cols-2 gap-3 mb-2">' +
-                // Visitante
                 '<button type="button" ' + (isLocked ? 'disabled' : 'onclick="pickTeam(\'' + game.id + '\', \'' + awayCode + '\')"') + ' class="' + baseBtnClass + awayStyle + ' ' + cursorStyle + '">' +
                 '<div class="flex flex-col items-center w-full">' +
                 '<img src="' + awayLogo + '" alt="' + awayCode + '" class="w-12 h-12 object-contain mb-2 drop-shadow" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/' + awayCode.toLowerCase() + '.png\';">' +
-                '<div class="font-bold text-sm tracking-wide flex items-center gap-1.5">' +
-                awayPickIcon + awayCode +
-                '</div>' +
+                '<div class="font-bold text-sm tracking-wide flex items-center gap-1.5">' + awayPickIcon + awayCode + '</div>' +
                 (isFinal || isInProgress ? '<div class="text-xl font-extrabold mt-1 ' + (winnerCode === awayCode ? 'text-emerald-400' : 'text-white') + '">' + awayScore + '</div>' : '') +
                 '</div>' +
                 renderTeamStatsBlock(awayCode, statsMap) +
                 '</button>' +
-
-                // Mandante
                 '<button type="button" ' + (isLocked ? 'disabled' : 'onclick="pickTeam(\'' + game.id + '\', \'' + homeCode + '\')"') + ' class="' + baseBtnClass + homeStyle + ' ' + cursorStyle + '">' +
                 '<div class="flex flex-col items-center w-full">' +
                 '<img src="' + homeLogo + '" alt="' + homeCode + '" class="w-12 h-12 object-contain mb-2 drop-shadow" onerror="this.onerror=null;this.src=\'https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/' + homeCode.toLowerCase() + '.png\';">' +
-                '<div class="font-bold text-sm tracking-wide flex items-center gap-1.5">' +
-                homePickIcon + homeCode +
-                '</div>' +
+                '<div class="font-bold text-sm tracking-wide flex items-center gap-1.5">' + homePickIcon + homeCode + '</div>' +
                 (isFinal || isInProgress ? '<div class="text-xl font-extrabold mt-1 ' + (winnerCode === homeCode ? 'text-emerald-400' : 'text-white') + '">' + homeScore + '</div>' : '') +
                 '</div>' +
                 renderTeamStatsBlock(homeCode, statsMap) +
                 '</button>' +
                 '</div>' +
-                renderWinProbabilityBar(awayCode, homeCode, statsMap) +
-                renderLeagueConsensusBar(game.id, awayCode, homeCode, isLocked);
+                renderWinProbabilityBar(awayCode, homeCode, statsMap);
 
             grid.appendChild(card);
         });
@@ -1110,11 +1031,13 @@
         }
     }
 
-    // 5. Leaderboard com Abas (Geral vs Desempenho da Semana)
+    // Leaderboard com Abas e Resenha com Bordões do Paulo Antunes e Everaldo Marques
     async function openLeaderboardModal() {
         const modal = document.getElementById('leaderboardModal');
         document.getElementById('leaderboardWeekBadgeNumber').textContent = currentWeek;
+        document.getElementById('leaderboardTieMessage').classList.add('hidden');
         modal.classList.remove('hidden');
+
         await loadSeasonLeaderboard();
     }
 
@@ -1124,18 +1047,20 @@
         const tabWeekBtn = document.getElementById('tabLeaderboardWeek');
         const colPoints = document.getElementById('colHeaderPoints');
         const colExtra = document.getElementById('colHeaderExtra');
+        const tieMsgEl = document.getElementById('leaderboardTieMessage');
 
         if (tab === 'SEASON') {
             tabSeasonBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition';
             tabWeekBtn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
             colPoints.textContent = 'Acertos Totais';
-            colExtra.textContent = 'Dif. Desempate';
+            colExtra.textContent = 'Dif. Tiebreaker';
+            if (tieMsgEl) tieMsgEl.classList.add('hidden');
             renderLeaderboardTable(cachedSeasonLeaderboard, false);
         } else {
             tabWeekBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition';
             tabSeasonBtn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
             colPoints.textContent = 'Acertos na Semana';
-            colExtra.textContent = 'Status da Rodada';
+            colExtra.textContent = 'Margem Desempate';
             loadWeekLeaderboard();
         }
     }
@@ -1157,25 +1082,103 @@
 
     async function loadWeekLeaderboard() {
         const tbody = document.getElementById('leaderboardBody');
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando acertos da Semana ' + currentWeek + '...</td></tr>';
+        const tieMsgEl = document.getElementById('leaderboardTieMessage');
+        if (tieMsgEl) tieMsgEl.classList.add('hidden');
 
-        try {
-            let weekRank = [];
-            const res = await fetch('/api/leaderboard/' + CURRENT_SEASON + '/week/' + currentWeek);
-            if (res.ok) {
-                weekRank = await res.json();
-            } else {
-                weekRank = cachedSeasonLeaderboard.map(u => ({
-                    ...u,
-                    weekPoints: u.weekPoints ?? Math.min(u.totalPoints || 0, 16),
-                    weekStatus: 'Semana ' + currentWeek
-                }));
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando acertos da Semana ' + currentWeek + ' para cada participante...</td></tr>';
+
+        if (!cachedSeasonLeaderboard || cachedSeasonLeaderboard.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum participante encontrado.</td></tr>';
+            return;
+        }
+
+        const winnersMap = {};
+        if (activeWeekData && activeWeekData.games) {
+            activeWeekData.games.forEach(g => {
+                const isFinal = g.status === 'STATUS_FINAL' || g.status === 'FINAL';
+                if (isFinal) {
+                    const aScore = Number(g.awayScore ?? 0);
+                    const hScore = Number(g.homeScore ?? 0);
+                    const awayTeam = (g.awayTeam || '').trim().toUpperCase();
+                    const homeTeam = (g.homeTeam || '').trim().toUpperCase();
+
+                    if (aScore > hScore) winnersMap[g.id] = awayTeam;
+                    else if (hScore > aScore) winnersMap[g.id] = homeTeam;
+                }
+            });
+        }
+
+        const weekScores = await Promise.all(cachedSeasonLeaderboard.map(async (u) => {
+            const uid = u.userId || u.id;
+            let pts = 0;
+            let margin = null;
+
+            if (currentUser && (currentUser.id === uid || currentUser.userId === uid)) {
+                if (userPicks) {
+                    Object.entries(userPicks).forEach(([gId, team]) => {
+                        if (winnersMap[gId] && winnersMap[gId] === String(team).trim().toUpperCase()) {
+                            pts++;
+                        }
+                    });
+                }
+                const marginInput = document.getElementById('tiebreakerMarginInput');
+                margin = marginInput ? parseInt(marginInput.value) : null;
+            } else if (uid) {
+                try {
+                    const res = await fetch('/api/picks/' + uid + '/' + CURRENT_SEASON + '/' + currentWeek);
+                    if (res.ok) {
+                        const pData = await res.json();
+                        if (pData && pData.picks) {
+                            Object.entries(pData.picks).forEach(([gId, team]) => {
+                                if (winnersMap[gId] && winnersMap[gId] === String(team).trim().toUpperCase()) {
+                                    pts++;
+                                }
+                            });
+                        }
+                        margin = pData ? pData.tiebreakerMargin : null;
+                    }
+                } catch (e) {
+                    // Palpites não localizados
+                }
             }
 
-            renderLeaderboardTable(weekRank, true);
-        } catch (e) {
-            renderLeaderboardTable(cachedSeasonLeaderboard, false);
+            return {
+                userId: uid,
+                displayName: u.displayName || u.username || u.name || 'Participante',
+                weekPoints: pts,
+                tiebreakerMargin: margin
+            };
+        }));
+
+        weekScores.sort((a, b) => b.weekPoints - a.weekPoints);
+        weekScores.forEach((u, i) => u.rank = i + 1);
+
+        // Mensagem de Empate no Leaderboard 100% NFL & Transmissão
+        if (currentUser && tieMsgEl) {
+            const myId = currentUser.id || currentUser.userId || currentUser._id;
+            const me = weekScores.find(u => u.userId === myId);
+
+            if (me) {
+                const tiedWith = weekScores.filter(u => u.userId !== myId && u.weekPoints === me.weekPoints);
+                if (tiedWith.length > 0) {
+                    const rivals = tiedWith.map(r => r.displayName).join(', ');
+
+                    let tieMessage = '';
+                    if (me.weekPoints >= 10) {
+                        tieMessage = `🐐 <strong>Empate de Mestres:</strong> Você e <strong>${rivals}</strong> empataram lá no topo com ${me.weekPoints} acertos! Dois Tom Bradys disputando o anel da rodada palmo a palmo!`;
+                    } else if (me.weekPoints <= 4) {
+                        tieMessage = `🎙️ <strong>Paulo Antunes manda avisar:</strong> 'Inacreditável, beeem amigos da ESPN!' Você e <strong>${rivals}</strong> empataram com ${me.weekPoints} acertos. A blitz pegou os dois desprevenidos!`;
+                    } else {
+                        tieMessage = `🎾 <strong>TEMOOOS UM JOGO, TEMOOOS UM DJOKO!</strong> Você e <strong>${rivals}</strong> empataram rigorosamente com ${me.weekPoints} acertos! Disputa acirradíssima decidida na prorrogação!`;
+                    }
+
+                    tieMsgEl.innerHTML = tieMessage;
+                    tieMsgEl.classList.remove('hidden');
+                }
+            }
         }
+
+        renderLeaderboardTable(weekScores, true);
     }
 
     function renderLeaderboardTable(ranking, isWeekly) {
@@ -1183,7 +1186,7 @@
         tbody.innerHTML = '';
 
         if (!ranking || ranking.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum palpite computado ainda.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum dado computado.</td></tr>';
             return;
         }
 
@@ -1198,9 +1201,9 @@
             if (position === 3) posBadge = '<span class="text-amber-600 font-bold"><i class="fa-solid fa-medal"></i> 3º</span>';
 
             const name = u.displayName || u.username || u.name || ('Participante ' + position);
-            const points = isWeekly ? (u.weekPoints ?? u.points ?? 0) : (u.totalPoints ?? 0);
+            const points = isWeekly ? (u.weekPoints ?? 0) : (u.totalPoints ?? 0);
             const extraVal = isWeekly
-                ? '<span class="text-xs text-amber-400/90 font-mono">Semana ' + currentWeek + '</span>'
+                ? ((u.tiebreakerMargin != null) ? u.tiebreakerMargin + ' pts' : '-')
                 : ((u.tiebreakerDifference != null) ? u.tiebreakerDifference + ' pts' : '-');
 
             row.innerHTML = '<td class="px-4 py-3">' + posBadge + '</td>' +
