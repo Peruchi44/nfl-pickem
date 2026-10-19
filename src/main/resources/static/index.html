@@ -85,11 +85,11 @@
 
         <div id="progressBarTiebreakerAlert" class="hidden mt-2 text-[11px] text-amber-400 flex items-center gap-1.5">
             <i class="fa-solid fa-triangle-exclamation text-xs"></i>
-            <span>Não esqueça de definir a margem de pontos no jogo de desempate!</span>
+            <span>Não esqueça de definir o tiebreaker no jogo de desempate!</span>
         </div>
     </div>
 
-    <!-- Veredito da Rodada com Memes da NFL -->
+    <!-- Veredito da Rodada -->
     <div id="performanceVerdictCard" class="hidden mb-6 rounded-xl p-4 border transition-all">
     </div>
 
@@ -117,20 +117,20 @@
     <div id="gamesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     </div>
 
-    <!-- Bloco do Tiebreaker (Margem de Vitória) -->
+    <!-- Bloco do Tiebreaker -->
     <div id="tiebreakerCard" class="hidden mt-8 bg-gradient-to-r from-amber-950/30 via-slate-900 to-amber-950/30 border border-amber-500/40 rounded-xl p-5 shadow-lg">
         <div class="flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-star text-amber-400 text-xl"></i>
                 <div>
                     <h3 class="text-base font-bold text-amber-300">Jogo do Desempate (Tiebreaker)</h3>
-                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Insira a margem final de vitória prevista para o último jogo.</p>
+                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Insira a sua previsão para o critério de desempate do último jogo.</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
-                <input type="number" id="tiebreakerMarginInput" min="1" max="99" placeholder="Margem pts (ex: 7)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
+                <input type="number" id="tiebreakerMarginInput" min="1" max="150" placeholder="Pontos (ex: 45)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
                 <button onclick="saveTiebreakerMargin()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition">
-                    Salvar Margem
+                    Salvar Palpite
                 </button>
             </div>
         </div>
@@ -167,7 +167,7 @@
     </div>
 </div>
 
-<!-- Modal Leaderboard com Abas e Resenha da Transmissão -->
+<!-- Modal Leaderboard -->
 <div id="leaderboardModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
         <div class="flex justify-between items-center mb-4">
@@ -238,18 +238,16 @@
     });
 
     async function autoDetectAndLoadCurrentWeek() {
-        let targetWeek = 3; // Padrão seguro para a rodada que acabou de rolar
+        let targetWeek = 3;
 
         try {
             const res = await fetch('/api/weeks/current');
             if (res.ok) {
                 const activeWeek = await res.json();
                 if (activeWeek && activeWeek.weekNumber) {
-                    // Verifica se a semana retornada pela API já tem jogos cadastrados
                     const checkWeekRes = await fetch('/api/weeks/' + CURRENT_SEASON + '/' + activeWeek.weekNumber);
                     if (checkWeekRes.ok) {
                         const weekData = await checkWeekRes.json();
-                        // Se a semana detectada tem jogos, usa ela; se estiver vazia, volta para a anterior
                         if (weekData && weekData.games && weekData.games.length > 0) {
                             targetWeek = activeWeek.weekNumber;
                         } else if (activeWeek.weekNumber > 1) {
@@ -458,7 +456,6 @@
         }
     }
 
-    // Veredito da Rodada exclusivo Paulo Antunes, Everaldo Marques e Lendas da NFL
     function renderPerformanceVerdict(games, picks) {
         const card = document.getElementById('performanceVerdictCard');
         if (!card) return;
@@ -498,7 +495,6 @@
 
         const winRate = Math.round((correctCount / finishedCount) * 100);
 
-        // Resenha com foco na NFL e transmissão da ESPN (< 45%)
         const badMemes = [
             {
                 title: "Inacreditável, beeem amigos da ESPN! 🏈🎙️",
@@ -517,7 +513,6 @@
             }
         ];
 
-        // Parelho / Meio de tabela (45% a 69%)
         const okMemes = [
             {
                 title: "TEMOOOS UM JOGO! TEMOOOS UM DJOKO! 🎾🏈🔥",
@@ -536,7 +531,6 @@
             }
         ];
 
-        // Desempenho Monstro (>= 70%)
         const goodMemes = [
             {
                 title: "VOCÊ É RIDÍCULO! 🤯🎙️",
@@ -564,7 +558,6 @@
         let borderStyle, textAccent;
         const seed = (finishedCount * 3) + correctCount;
 
-        // EASTER EGG DE AURA (67%)
         if (winRate === 67) {
             selectedMeme = {
                 title: "FARMOU AURA NA SEMANA! 🗿🍷✨",
@@ -947,7 +940,7 @@
         }
 
         if (tbGame) {
-            desc.textContent = 'Último jogo: ' + tbGame.awayTeam + ' @ ' + tbGame.homeTeam + '. Digite a margem de pontos prevista da vitória.';
+            desc.textContent = 'Último jogo: ' + tbGame.awayTeam + ' @ ' + tbGame.homeTeam + '. Digite sua previsão para o tiebreaker.';
         }
 
         input.value = (existingMargin !== null && existingMargin !== undefined) ? existingMargin : '';
@@ -983,7 +976,7 @@
         const margin = parseInt(input.value);
 
         if (isNaN(margin) || margin <= 0) {
-            alert('Informe uma margem de pontos válida (maior que 0).');
+            alert('Informe um número válido (maior que 0).');
             return;
         }
 
@@ -1031,7 +1024,6 @@
         }
     }
 
-    // Leaderboard com Abas e Resenha com Bordões do Paulo Antunes e Everaldo Marques
     async function openLeaderboardModal() {
         const modal = document.getElementById('leaderboardModal');
         document.getElementById('leaderboardWeekBadgeNumber').textContent = currentWeek;
@@ -1060,7 +1052,7 @@
             tabWeekBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition';
             tabSeasonBtn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
             colPoints.textContent = 'Acertos na Semana';
-            colExtra.textContent = 'Margem Desempate';
+            colExtra.textContent = 'Dif. Tiebreaker';
             loadWeekLeaderboard();
         }
     }
@@ -1070,7 +1062,11 @@
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Carregando classificação geral...</td></tr>';
 
         try {
-            const res = await fetch('/api/leaderboard/' + CURRENT_SEASON);
+            // Tenta a rota /api/v1/leaderboard/season ou fallback para /api/leaderboard/
+            let res = await fetch('/api/v1/leaderboard/season');
+            if (!res.ok) {
+                res = await fetch('/api/leaderboard/' + CURRENT_SEASON);
+            }
             if (!res.ok) throw new Error('Erro ao carregar leaderboard');
             cachedSeasonLeaderboard = await res.json();
             switchLeaderboardTab('SEASON');
@@ -1087,13 +1083,44 @@
 
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando acertos da Semana ' + currentWeek + ' para cada participante...</td></tr>';
 
+        // Tenta buscar diretamente do endpoint dedicado se existir
+        try {
+            const resWeekly = await fetch('/api/v1/leaderboard/week/' + currentWeek);
+            if (resWeekly.ok) {
+                const weeklyData = await resWeekly.json();
+                if (weeklyData && weeklyData.length > 0) {
+                    renderLeaderboardTable(weeklyData, true);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Endpoint direto semanal indisponível, usando cálculo local.');
+        }
+
         if (!cachedSeasonLeaderboard || cachedSeasonLeaderboard.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum participante encontrado.</td></tr>';
             return;
         }
 
         const winnersMap = {};
+        let tbGame = null;
+        let actualTiebreakerValue = null;
+
         if (activeWeekData && activeWeekData.games) {
+            if (activeWeekData.tiebreakerGameId) {
+                tbGame = activeWeekData.games.find(g => g.id === activeWeekData.tiebreakerGameId);
+            }
+            if (!tbGame && activeWeekData.games.length > 0) {
+                tbGame = activeWeekData.games[activeWeekData.games.length - 1];
+            }
+
+            if (tbGame && (tbGame.status === 'STATUS_FINAL' || tbGame.status === 'FINAL')) {
+                const aScore = Number(tbGame.awayScore ?? 0);
+                const hScore = Number(tbGame.homeScore ?? 0);
+                // Pode ser a soma ou a margem absoluta (Math.abs(hScore - aScore))
+                actualTiebreakerValue = Math.abs(hScore - aScore);
+            }
+
             activeWeekData.games.forEach(g => {
                 const isFinal = g.status === 'STATUS_FINAL' || g.status === 'FINAL';
                 if (isFinal) {
@@ -1111,7 +1138,7 @@
         const weekScores = await Promise.all(cachedSeasonLeaderboard.map(async (u) => {
             const uid = u.userId || u.id;
             let pts = 0;
-            let margin = null;
+            let userMargin = null;
 
             if (currentUser && (currentUser.id === uid || currentUser.userId === uid)) {
                 if (userPicks) {
@@ -1122,7 +1149,7 @@
                     });
                 }
                 const marginInput = document.getElementById('tiebreakerMarginInput');
-                margin = marginInput ? parseInt(marginInput.value) : null;
+                userMargin = marginInput ? parseInt(marginInput.value) : null;
             } else if (uid) {
                 try {
                     const res = await fetch('/api/picks/' + uid + '/' + CURRENT_SEASON + '/' + currentWeek);
@@ -1135,25 +1162,43 @@
                                 }
                             });
                         }
-                        margin = pData ? pData.tiebreakerMargin : null;
+                        userMargin = pData ? (pData.tiebreakerMargin ?? pData.tiebreakerTotalPoints) : null;
                     }
                 } catch (e) {
-                    // Palpites não localizados
+                    // Sem palpites
                 }
+            }
+
+            // Calcula a diferença real caso o jogo esteja concluído
+            let diff = null;
+            if (actualTiebreakerValue !== null && userMargin !== null && !isNaN(userMargin)) {
+                diff = Math.abs(userMargin - actualTiebreakerValue);
             }
 
             return {
                 userId: uid,
                 displayName: u.displayName || u.username || u.name || 'Participante',
                 weekPoints: pts,
-                tiebreakerMargin: margin
+                tiebreakerMargin: userMargin,
+                tiebreakerDiff: diff
             };
         }));
 
-        weekScores.sort((a, b) => b.weekPoints - a.weekPoints);
+        // Ordenação: 1º mais acertos, 2º menor diferença no tiebreaker
+        weekScores.sort((a, b) => {
+            if (b.weekPoints !== a.weekPoints) {
+                return b.weekPoints - a.weekPoints;
+            }
+            if (a.tiebreakerDiff != null && b.tiebreakerDiff != null) {
+                return a.tiebreakerDiff - b.tiebreakerDiff;
+            }
+            if (a.tiebreakerDiff != null) return -1;
+            if (b.tiebreakerDiff != null) return 1;
+            return 0;
+        });
+
         weekScores.forEach((u, i) => u.rank = i + 1);
 
-        // Mensagem de Empate no Leaderboard 100% NFL & Transmissão
         if (currentUser && tieMsgEl) {
             const myId = currentUser.id || currentUser.userId || currentUser._id;
             const me = weekScores.find(u => u.userId === myId);
@@ -1196,20 +1241,23 @@
 
             const position = u.rank || (index + 1);
             let posBadge = '<span class="font-medium text-slate-400">' + position + 'º</span>';
-            if (position === 1) posBadge = '<span class="text-amber-400 font-bold"><i class="fa-solid fa-medal"></i> 1º</span>';
+            if (position === 1) posBadge = '<span class="text-yellow-400 font-bold"><i class="fa-solid fa-medal"></i> 1º</span>';
             if (position === 2) posBadge = '<span class="text-slate-300 font-bold"><i class="fa-solid fa-medal"></i> 2º</span>';
             if (position === 3) posBadge = '<span class="text-amber-600 font-bold"><i class="fa-solid fa-medal"></i> 3º</span>';
 
             const name = u.displayName || u.username || u.name || ('Participante ' + position);
-            const points = isWeekly ? (u.weekPoints ?? 0) : (u.totalPoints ?? 0);
-            const extraVal = isWeekly
-                ? ((u.tiebreakerMargin != null) ? u.tiebreakerMargin + ' pts' : '-')
-                : ((u.tiebreakerDifference != null) ? u.tiebreakerDifference + ' pts' : '-');
+            const points = isWeekly ? (u.weekPoints ?? u.totalPoints ?? 0) : (u.totalPoints ?? 0);
+
+            // Prioriza o campo tiebreakerDiff do DTO/calculado; se nulo, exibe '-'
+            const diffValue = u.tiebreakerDiff ?? u.tiebreakerDifference;
+            const extraVal = (diffValue !== null && diffValue !== undefined)
+                ? diffValue + ' pts'
+                : '-';
 
             row.innerHTML = '<td class="px-4 py-3">' + posBadge + '</td>' +
                 '<td class="px-4 py-3 font-semibold text-slate-200">' + name + '</td>' +
                 '<td class="px-4 py-3 text-center text-emerald-400 font-bold">' + points + '</td>' +
-                '<td class="px-4 py-3 text-center text-slate-400">' + extraVal + '</td>';
+                '<td class="px-4 py-3 text-center text-slate-400 font-mono">' + extraVal + '</td>';
             tbody.appendChild(row);
         });
     }

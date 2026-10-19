@@ -5,126 +5,252 @@ import com.java.fernando.nflpickem.model.Game;
 import com.java.fernando.nflpickem.model.User;
 import com.java.fernando.nflpickem.model.UserPick;
 import com.java.fernando.nflpickem.model.Week;
-import com.java.fernando.nflpickem.repository.UserPickRepository;
 import com.java.fernando.nflpickem.repository.UserRepository;
+import com.java.fernando.nflpickem.repository.UserPickRepository;
 import com.java.fernando.nflpickem.repository.WeekRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class LeaderBoardService {
 
-    private final UserPickRepository pickRepository;
-    private final WeekRepository weekRepository;
     private final UserRepository userRepository;
+    private final UserPickRepository userPickRepository;
+    private final WeekRepository weekRepository;
 
-    public LeaderBoardService(UserPickRepository pickRepository,
-                              WeekRepository weekRepository,
-                              UserRepository userRepository) {
-        this.pickRepository = pickRepository;
-        this.weekRepository = weekRepository;
-        this.userRepository = userRepository;
-    }
+    private static final int CURRENT_SEASON = 2026;
 
+    /**
+     * Recalcula e persiste as pontuações dos palpites da semana após a sincronização da ESPN
+     */
     public void calculateWeekScores(int season, int weekNumber) {
-        Week week = weekRepository.findBySeasonAndWeekNumber(season, weekNumber)
-                .orElseThrow(() -> new IllegalArgumentException("Semana não encontrada"));
-
-        Map<String, String> winners = new HashMap<>();
-        if (week.getGames() != null) {
-            for (Game g : week.getGames()) {
-                if ("FINAL".equalsIgnoreCase(g.getStatus()) && g.getWinnerTeam() != null && g.getId() != null) {
-                    winners.put(g.getId(), g.getWinnerTeam());
-                }
-            }
+        Week week = weekRepository.findBySeasonAndWeekNumber(season, weekNumber).orElse(null);
+        if (week == null || week.getGames() == null || week.getGames().isEmpty()) {
+            return;
         }
 
-        List<UserPick> weekPicks = pickRepository.findBySeasonAndWeekNumber(season, weekNumber);
+        Map<String, Game> gamesMap = new HashMap<>();
+        week.getGames().forEach(g -> gamesMap.put(g.getId(), g));
 
-        for (UserPick pick : weekPicks) {
+        List<UserPick> weekPicks = userPickRepository.findBySeasonAndWeekNumber(season, weekNumber);
+
+        for (UserPick userPick : weekPicks) {
             int score = 0;
-            if (pick.getPicks() != null) {
-                for (Map.Entry<String, String> userChoice : pick.getPicks().entrySet()) {
-                    String winningTeam = winners.get(userChoice.getKey());
-                    if (winningTeam != null && winningTeam.equalsIgnoreCase(userChoice.getValue())) {
-                        score++;
+            if (userPick.getPicks() != null) {
+                for (Map.Entry<String, String> entry : userPick.getPicks().entrySet()) {
+                    String gameId = entry.getKey();
+                    String chosenTeam = entry.getValue();
+
+                    Game game = gamesMap.get(gameId);
+                    if (game != null && isGameFinished(game)) {
+                        String winner = getGameWinner(game);
+                        if (winner != null && winner.equalsIgnoreCase(chosenTeam)) {
+                            score++;
+                        }
                     }
                 }
             }
-            pick.setTotalPoints(score);
-            pickRepository.save(pick);
+            userPick.setTotalPoints(score);
+            userPick.setUpdatedAt(Instant.now());
+            userPickRepository.save(userPick);
         }
     }
 
-    public List<LeaderBoardEntry> getLeaderboard(int season) {
+    /**
+     * Tabela de Classificação Semanal (ex: Semana 6)
+     */
+    public List<LeaderBoardEntry> getWeeklyLeaderboard(int season, int weekNumber) {
         List<User> users = userRepository.findAll();
-        Map<String, String> userNames = users.stream()
-                .collect(Collectors.toMap(User::getId, User::getDisplayName));
+        Week week = weekRepository.findBySeasonAndWeekNumber(season, weekNumber).orElse(null);
 
-        List<Week> weeks = weekRepository.findAll().stream()
-                .filter(w -> w.getSeason() == season)
-                .toList();
+        Map<String, Game> gamesMap = new HashMap<>();
+        String tiebreakerGameId = null;
 
-        // Mapeia as margens reais dos jogos de tiebreaker finalizados
-        Map<String, Integer> realTiebreakerMargins = new HashMap<>();
-        for (Week w : weeks) {
-            if (w.getTiebreakerGameId() != null && w.getGames() != null) {
-                for (Game g : w.getGames()) {
-                    if (w.getTiebreakerGameId().equals(g.getId()) && "FINAL".equalsIgnoreCase(g.getStatus())) {
-                        int margin = Math.abs(g.getHomeScore() - g.getAwayScore());
-                        realTiebreakerMargins.put(w.getTiebreakerGameId(), margin);
+        if (week != null && week.getGames() != null) {
+            week.getGames().forEach(g -> gamesMap.put(g.getId(), g));
+            tiebreakerGameId = week.getTiebreakerGameId();
+            if (tiebreakerGameId == null && !week.getGames().isEmpty()) {
+                tiebreakerGameId = week.getGames().get(week.getGames().size() - 1).getId();
+            }
+        }
+
+        // Calcula a margem real se o jogo do tiebreaker já tiver terminado
+        Integer actualMargin = null;
+        if (tiebreakerGameId != null && gamesMap.containsKey(tiebreakerGameId)) {
+            Game tbGame = gamesMap.get(tiebreakerGameId);
+            if (isGameFinished(tbGame) && tbGame.getHomeScore() != null && tbGame.getAwayScore() != null) {
+                actualMargin = Math.abs(tbGame.getHomeScore() - tbGame.getAwayScore());
+            }
+        }
+
+        List<LeaderBoardEntry> entries = new ArrayList<>();
+
+        for (User user : users) {
+            UserPick userPick = userPickRepository
+                    .findByUserIdAndSeasonAndWeekNumber(user.getId(), season, weekNumber)
+                    .orElse(null);
+
+            int correctPicks = 0;
+            Integer tiebreakerDiff = null;
+
+            if (userPick != null) {
+                if (userPick.getPicks() != null) {
+                    for (Map.Entry<String, String> entry : userPick.getPicks().entrySet()) {
+                        Game game = gamesMap.get(entry.getKey());
+                        if (game != null && isGameFinished(game)) {
+                            String realWinner = getGameWinner(game);
+                            if (realWinner != null && realWinner.equalsIgnoreCase(entry.getValue())) {
+                                correctPicks++;
+                            }
+                        }
+                    }
+                }
+
+                if (actualMargin != null && userPick.getTiebreakerMargin() != null) {
+                    tiebreakerDiff = Math.abs(userPick.getTiebreakerMargin() - actualMargin);
+                }
+            }
+
+            entries.add(new LeaderBoardEntry(
+                    user.getId(),
+                    getUserDisplayName(user),
+                    correctPicks,
+                    0,
+                    tiebreakerDiff
+            ));
+        }
+
+        return sortAndAssignRank(entries);
+    }
+
+    /**
+     * Tabela de Classificação Geral da Época
+     */
+    public List<LeaderBoardEntry> getSeasonLeaderboard(int season) {
+        List<User> users = userRepository.findAll();
+        List<Week> weeks = weekRepository.findBySeason(season);
+
+        Map<Integer, Week> weeksMap = new HashMap<>();
+        if (weeks != null) {
+            weeks.forEach(w -> weeksMap.put(w.getWeekNumber(), w));
+        }
+
+        List<LeaderBoardEntry> entries = new ArrayList<>();
+
+        for (User user : users) {
+            List<UserPick> allUserPicks = userPickRepository.findByUserIdAndSeason(user.getId(), season);
+
+            int totalCorrect = 0;
+            int totalTiebreakerDiff = 0;
+            boolean hasComputedTiebreaker = false;
+
+            for (UserPick userPick : allUserPicks) {
+                Week week = weeksMap.get(userPick.getWeekNumber());
+                if (week == null || week.getGames() == null) continue;
+
+                Map<String, Game> weekGamesMap = new HashMap<>();
+                week.getGames().forEach(g -> weekGamesMap.put(g.getId(), g));
+
+                // Acertos nos jogos
+                if (userPick.getPicks() != null) {
+                    for (Map.Entry<String, String> entry : userPick.getPicks().entrySet()) {
+                        Game game = weekGamesMap.get(entry.getKey());
+                        if (game != null && isGameFinished(game)) {
+                            String realWinner = getGameWinner(game);
+                            if (realWinner != null && realWinner.equalsIgnoreCase(entry.getValue())) {
+                                totalCorrect++;
+                            }
+                        }
+                    }
+                }
+
+                // Desempate do jogo final
+                String tbGameId = week.getTiebreakerGameId();
+                if (tbGameId == null && !week.getGames().isEmpty()) {
+                    tbGameId = week.getGames().get(week.getGames().size() - 1).getId();
+                }
+
+                if (tbGameId != null && weekGamesMap.containsKey(tbGameId)) {
+                    Game tbGame = weekGamesMap.get(tbGameId);
+                    if (isGameFinished(tbGame) && tbGame.getHomeScore() != null && tbGame.getAwayScore() != null) {
+                        if (userPick.getTiebreakerMargin() != null) {
+                            int actualMargin = Math.abs(tbGame.getHomeScore() - tbGame.getAwayScore());
+                            totalTiebreakerDiff += Math.abs(userPick.getTiebreakerMargin() - actualMargin);
+                            hasComputedTiebreaker = true;
+                        }
                     }
                 }
             }
+
+            Integer finalDiff = hasComputedTiebreaker ? totalTiebreakerDiff : null;
+
+            entries.add(new LeaderBoardEntry(
+                    user.getId(),
+                    getUserDisplayName(user),
+                    totalCorrect,
+                    0,
+                    finalDiff
+            ));
         }
 
-        List<UserPick> allPicks = pickRepository.findAll().stream()
-                .filter(p -> p.getSeason() == season)
-                .toList();
+        return sortAndAssignRank(entries);
+    }
 
-        Map<String, Integer> scoreByUser = new HashMap<>();
-        Map<String, Integer> tiebreakerDiffByUser = new HashMap<>();
+    public List<LeaderBoardEntry> getSeasonLeaderboard() {
+        return getSeasonLeaderboard(CURRENT_SEASON);
+    }
 
-        for (User u : users) {
-            scoreByUser.put(u.getId(), 0);
-            tiebreakerDiffByUser.put(u.getId(), 0);
+    private boolean isGameFinished(Game game) {
+        if (game == null) return false;
+        String status = game.getStatus();
+        return "STATUS_FINAL".equalsIgnoreCase(status)
+                || "FINAL".equalsIgnoreCase(status)
+                || game.getWinnerTeam() != null;
+    }
+
+    private String getGameWinner(Game game) {
+        if (game.getWinnerTeam() != null && !game.getWinnerTeam().isBlank()) {
+            return game.getWinnerTeam().trim();
         }
-
-        for (UserPick pick : allPicks) {
-            scoreByUser.merge(pick.getUserId(), pick.getTotalPoints(), Integer::sum);
-
-            // Calcula erro do desempate se a semana já teve o jogo encerrado
-            weeks.stream()
-                    .filter(w -> w.getWeekNumber() == pick.getWeekNumber())
-                    .findFirst()
-                    .ifPresent(w -> {
-                        String tGameId = w.getTiebreakerGameId();
-                        if (tGameId != null && realTiebreakerMargins.containsKey(tGameId) && pick.getTiebreakerMargin() != null) {
-                            int actualMargin = realTiebreakerMargins.get(tGameId);
-                            int diff = Math.abs(pick.getTiebreakerMargin() - actualMargin);
-                            tiebreakerDiffByUser.merge(pick.getUserId(), diff, Integer::sum);
-                        }
-                    });
+        if (game.getHomeScore() != null && game.getAwayScore() != null) {
+            if (game.getHomeScore() > game.getAwayScore()) return game.getHomeTeam();
+            if (game.getAwayScore() > game.getHomeScore()) return game.getAwayTeam();
+            return "TIE";
         }
+        return null;
+    }
 
-        // Ordenação: 1º Maior pontuação | 2º Menor erro no tiebreaker
-        List<String> sortedUserIds = new ArrayList<>(users.stream().map(User::getId).toList());
-        sortedUserIds.sort((u1, u2) -> {
-            int scoreCompare = Integer.compare(scoreByUser.getOrDefault(u2, 0), scoreByUser.getOrDefault(u1, 0));
-            if (scoreCompare != 0) {
-                return scoreCompare;
-            }
-            return Integer.compare(tiebreakerDiffByUser.getOrDefault(u1, 0), tiebreakerDiffByUser.getOrDefault(u2, 0));
-        });
+    private String getUserDisplayName(User user) {
+        if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) return user.getDisplayName();
+        if (user.getName() != null && !user.getName().isBlank()) return user.getName();
+        return user.getEmail();
+    }
+
+    private List<LeaderBoardEntry> sortAndAssignRank(List<LeaderBoardEntry> entries) {
+        // Ordena por acertos (descendente) e em caso de empate pelo tiebreaker (ascendente)
+        entries.sort(
+                Comparator.comparingInt(LeaderBoardEntry::totalPoints).reversed()
+                        .thenComparing(
+                                LeaderBoardEntry::tiebreakerDiff,
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        )
+        );
 
         List<LeaderBoardEntry> rankedList = new ArrayList<>();
         int currentRank = 1;
-        for (String uId : sortedUserIds) {
-            String displayName = userNames.getOrDefault(uId, "Anônimo");
-            int score = scoreByUser.getOrDefault(uId, 0);
-            rankedList.add(new LeaderBoardEntry(uId, displayName, score, currentRank++));
+
+        for (LeaderBoardEntry entry : entries) {
+            rankedList.add(new LeaderBoardEntry(
+                    entry.userId(),
+                    entry.displayName(),
+                    entry.totalPoints(),
+                    currentRank++,
+                    entry.tiebreakerDiff()
+            ));
         }
 
         return rankedList;

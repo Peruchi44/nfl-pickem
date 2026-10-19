@@ -9,7 +9,11 @@ import java.util.Optional;
 
 @Repository
 public interface UserPickRepository extends MongoRepository<UserPick, String> {
+
     Optional<UserPick> findByUserIdAndSeasonAndWeekNumber(String userId, int season, int weekNumber);
+
+    List<UserPick> findByUserIdAndSeason(String userId, int season);
+
+    // Método que faltava para a linha 87 do PickService:
     List<UserPick> findBySeasonAndWeekNumber(int season, int weekNumber);
-    List<UserPick> findByUserId(String userId);
 }
