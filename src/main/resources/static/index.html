@@ -85,7 +85,7 @@
 
         <div id="progressBarTiebreakerAlert" class="hidden mt-2 text-[11px] text-amber-400 flex items-center gap-1.5">
             <i class="fa-solid fa-triangle-exclamation text-xs"></i>
-            <span>Não esqueça de definir o tiebreaker no jogo de desempate!</span>
+            <span>Não esqueça de definir o palpite do jogo de desempate!</span>
         </div>
     </div>
 
@@ -124,20 +124,20 @@
                 <i class="fa-solid fa-star text-amber-400 text-xl"></i>
                 <div>
                     <h3 class="text-base font-bold text-amber-300">Jogo do Desempate (Tiebreaker)</h3>
-                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Insira a sua previsão para o critério de desempate do último jogo.</p>
+                    <p id="tiebreakerGameDescription" class="text-xs text-slate-400">Insira a margem final de vitória prevista para o último jogo.</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
-                <input type="number" id="tiebreakerMarginInput" min="1" max="150" placeholder="Pontos (ex: 45)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
+                <input type="number" id="tiebreakerMarginInput" min="1" max="150" placeholder="Margem pts (ex: 7)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
                 <button onclick="saveTiebreakerMargin()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition">
-                    Salvar Palpite
+                    Salvar Margem
                 </button>
             </div>
         </div>
     </div>
 </main>
 
-<!-- Modal Login Privado -->
+<!-- Modal Login -->
 <div id="loginModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex justify-between items-center mb-3">
@@ -188,7 +188,7 @@
             </button>
         </div>
 
-        <!-- Card de Resenha / Empate na Rodada -->
+        <!-- Mensagem de Empate -->
         <div id="leaderboardTieMessage" class="hidden mb-3 p-3 rounded-lg border border-amber-500/40 bg-amber-950/20 text-xs text-amber-300 flex items-center gap-2">
         </div>
 
@@ -209,7 +209,44 @@
     </div>
 </div>
 
-<!-- Lógica JavaScript Principal -->
+<!-- Modal Raio-X do Confronto: Lesões e Duelo de Quarterbacks -->
+<div id="insightModal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+            <div>
+                <h3 id="insightModalTitle" class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-amber-400"></i> Raio-X do Confronto
+                </h3>
+                <p class="text-xs text-slate-400">Boletim médico oficial e comparativo entre os signal-callers</p>
+            </div>
+            <button onclick="closeInsightModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <!-- Abas do Modal de Insights -->
+        <div class="flex gap-2 my-4">
+            <button id="tabBtnInjuries" onclick="switchInsightTab('INJURIES')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-injured"></i> Relatório de Lesões
+            </button>
+            <button id="tabBtnQbs" onclick="switchInsightTab('QBS')" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-crosshairs"></i> Duelo de Quarterbacks
+            </button>
+        </div>
+
+        <!-- Aba de Lesões -->
+        <div id="tabContentInjuries" class="overflow-y-auto flex-1 space-y-2 pr-1">
+            <div id="injuriesList" class="space-y-2">
+            </div>
+        </div>
+
+        <!-- Aba de QBs -->
+        <div id="tabContentQbs" class="hidden overflow-y-auto flex-1 space-y-4 pr-1">
+            <div id="qbComparisonContainer">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript Principal -->
 <script>
     const CURRENT_SEASON = 2026;
 
@@ -915,7 +952,11 @@
                 renderTeamStatsBlock(homeCode, statsMap) +
                 '</button>' +
                 '</div>' +
-                renderWinProbabilityBar(awayCode, homeCode, statsMap);
+                renderWinProbabilityBar(awayCode, homeCode, statsMap) +
+                // Botão para abrir o Raio-X de Lesões e QBs do jogo
+                '<button type="button" onclick="openMatchupInsight(\'' + game.id + '\', \'' + awayCode + '\', \'' + homeCode + '\')" class="mt-3 w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-amber-400 text-xs font-semibold flex items-center justify-center gap-2 transition">' +
+                '<i class="fa-solid fa-stethoscope"></i> <span>Lesões & Raio-X dos QBs</span>' +
+                '</button>';
 
             grid.appendChild(card);
         });
@@ -940,7 +981,7 @@
         }
 
         if (tbGame) {
-            desc.textContent = 'Último jogo: ' + tbGame.awayTeam + ' @ ' + tbGame.homeTeam + '. Digite sua previsão para o tiebreaker.';
+            desc.textContent = 'Último jogo: ' + tbGame.awayTeam + ' @ ' + tbGame.homeTeam + '. Digite a margem de pontos prevista da vitória.';
         }
 
         input.value = (existingMargin !== null && existingMargin !== undefined) ? existingMargin : '';
@@ -976,7 +1017,7 @@
         const margin = parseInt(input.value);
 
         if (isNaN(margin) || margin <= 0) {
-            alert('Informe um número válido (maior que 0).');
+            alert('Informe uma margem de pontos válida (maior que 0).');
             return;
         }
 
@@ -1024,6 +1065,7 @@
         }
     }
 
+    // Leaderboard
     async function openLeaderboardModal() {
         const modal = document.getElementById('leaderboardModal');
         document.getElementById('leaderboardWeekBadgeNumber').textContent = currentWeek;
@@ -1062,7 +1104,6 @@
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Carregando classificação geral...</td></tr>';
 
         try {
-            // Tenta a rota /api/v1/leaderboard/season ou fallback para /api/leaderboard/
             let res = await fetch('/api/v1/leaderboard/season');
             if (!res.ok) {
                 res = await fetch('/api/leaderboard/' + CURRENT_SEASON);
@@ -1083,7 +1124,6 @@
 
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando acertos da Semana ' + currentWeek + ' para cada participante...</td></tr>';
 
-        // Tenta buscar diretamente do endpoint dedicado se existir
         try {
             const resWeekly = await fetch('/api/v1/leaderboard/week/' + currentWeek);
             if (resWeekly.ok) {
@@ -1104,7 +1144,7 @@
 
         const winnersMap = {};
         let tbGame = null;
-        let actualTiebreakerValue = null;
+        let actualTiebreakerMargin = null;
 
         if (activeWeekData && activeWeekData.games) {
             if (activeWeekData.tiebreakerGameId) {
@@ -1117,8 +1157,7 @@
             if (tbGame && (tbGame.status === 'STATUS_FINAL' || tbGame.status === 'FINAL')) {
                 const aScore = Number(tbGame.awayScore ?? 0);
                 const hScore = Number(tbGame.homeScore ?? 0);
-                // Pode ser a soma ou a margem absoluta (Math.abs(hScore - aScore))
-                actualTiebreakerValue = Math.abs(hScore - aScore);
+                actualTiebreakerMargin = Math.abs(hScore - aScore);
             }
 
             activeWeekData.games.forEach(g => {
@@ -1162,17 +1201,16 @@
                                 }
                             });
                         }
-                        userMargin = pData ? (pData.tiebreakerMargin ?? pData.tiebreakerTotalPoints) : null;
+                        userMargin = pData ? pData.tiebreakerMargin : null;
                     }
                 } catch (e) {
                     // Sem palpites
                 }
             }
 
-            // Calcula a diferença real caso o jogo esteja concluído
             let diff = null;
-            if (actualTiebreakerValue !== null && userMargin !== null && !isNaN(userMargin)) {
-                diff = Math.abs(userMargin - actualTiebreakerValue);
+            if (actualTiebreakerMargin !== null && userMargin !== null && !isNaN(userMargin)) {
+                diff = Math.abs(userMargin - actualTiebreakerMargin);
             }
 
             return {
@@ -1184,7 +1222,6 @@
             };
         }));
 
-        // Ordenação: 1º mais acertos, 2º menor diferença no tiebreaker
         weekScores.sort((a, b) => {
             if (b.weekPoints !== a.weekPoints) {
                 return b.weekPoints - a.weekPoints;
@@ -1248,7 +1285,6 @@
             const name = u.displayName || u.username || u.name || ('Participante ' + position);
             const points = isWeekly ? (u.weekPoints ?? u.totalPoints ?? 0) : (u.totalPoints ?? 0);
 
-            // Prioriza o campo tiebreakerDiff do DTO/calculado; se nulo, exibe '-'
             const diffValue = u.tiebreakerDiff ?? u.tiebreakerDifference;
             const extraVal = (diffValue !== null && diffValue !== undefined)
                 ? diffValue + ' pts'
@@ -1264,6 +1300,165 @@
 
     function closeLeaderboardModal() {
         document.getElementById('leaderboardModal').classList.add('hidden');
+    }
+
+    // Modal de Insights: Lesões & Quarterbacks
+    async function openMatchupInsight(gameId, awayTeam, homeTeam) {
+        const modal = document.getElementById('insightModal');
+        document.getElementById('insightModalTitle').innerHTML = `<i class="fa-solid fa-chart-simple text-amber-400"></i> ${awayTeam} @ ${homeTeam}`;
+        modal.classList.remove('hidden');
+
+        switchInsightTab('INJURIES');
+
+        const injuriesList = document.getElementById('injuriesList');
+        const qbContainer = document.getElementById('qbComparisonContainer');
+
+        injuriesList.innerHTML = '<div class="py-12 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Buscando boletim médico oficial...</div>';
+        qbContainer.innerHTML = '<div class="py-12 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Carregando estatísticas dos QBs...</div>';
+
+        try {
+            const res = await fetch(`/api/v1/insights/game/${gameId}?away=${awayTeam}&home=${homeTeam}`);
+            if (!res.ok) throw new Error('Não foi possível carregar os dados');
+            const data = await res.json();
+
+            renderInjuries(data.injuries || []);
+            renderQbComparison(data.awayQb, data.homeQb);
+        } catch (e) {
+            injuriesList.innerHTML = '<div class="py-8 text-center text-rose-400 text-xs">Informações de lesões indisponíveis para este confronto no momento.</div>';
+            qbContainer.innerHTML = '<div class="py-8 text-center text-rose-400 text-xs">Informações dos QBs indisponíveis no momento.</div>';
+        }
+    }
+
+    function closeInsightModal() {
+        document.getElementById('insightModal').classList.add('hidden');
+    }
+
+    function switchInsightTab(tab) {
+        const btnInjuries = document.getElementById('tabBtnInjuries');
+        const btnQbs = document.getElementById('tabBtnQbs');
+        const contentInjuries = document.getElementById('tabContentInjuries');
+        const contentQbs = document.getElementById('tabContentQbs');
+
+        if (tab === 'INJURIES') {
+            btnInjuries.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition flex items-center justify-center gap-2 shadow';
+            btnQbs.className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center gap-2';
+            contentInjuries.classList.remove('hidden');
+            contentQbs.classList.add('hidden');
+        } else {
+            btnQbs.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition flex items-center justify-center gap-2 shadow';
+            btnInjuries.className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center gap-2';
+            contentQbs.classList.remove('hidden');
+            contentInjuries.classList.add('hidden');
+        }
+    }
+
+    function renderInjuries(injuries) {
+        const container = document.getElementById('injuriesList');
+        container.innerHTML = '';
+
+        if (!injuries || injuries.length === 0) {
+            container.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs">Nenhum jogador lesionado ou listado no relatório para esta partida.</div>';
+            return;
+        }
+
+        injuries.forEach(inj => {
+            let statusBadge = 'bg-slate-800 text-slate-300 border-slate-700';
+            if (inj.status === 'OUT' || inj.status === 'IR') {
+                statusBadge = 'bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold';
+            } else if (inj.status === 'QUESTIONABLE') {
+                statusBadge = 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold';
+            } else if (inj.status === 'DOUBTFUL') {
+                statusBadge = 'bg-orange-500/20 text-orange-400 border border-orange-500/40 font-bold';
+            }
+
+            const keyPlayerBadge = inj.isKeyPlayer
+                ? '<span class="bg-red-600 text-white font-extrabold text-[9px] uppercase px-1.5 py-0.5 rounded animate-pulse">🔥 Astro / Titular</span>'
+                : '';
+
+            const card = document.createElement('div');
+            card.className = `p-3 rounded-xl border ${inj.isKeyPlayer ? 'border-amber-500/40 bg-amber-950/20' : 'border-slate-800 bg-slate-950/60'} flex items-center justify-between gap-3`;
+            card.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-black text-amber-400">${inj.team}</span>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-sm font-bold text-white">${inj.playerName}</span>
+                            <span class="text-[10px] text-slate-400 font-mono">(${inj.position})</span>
+                            ${keyPlayerBadge}
+                        </div>
+                        <span class="text-xs text-slate-400">Lesão: <strong class="text-slate-300">${inj.injuryDetail}</strong></span>
+                    </div>
+                </div>
+                <span class="text-[11px] uppercase px-2.5 py-1 rounded-md ${statusBadge}">${inj.status}</span>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function renderQbComparison(awayQb, homeQb) {
+        const container = document.getElementById('qbComparisonContainer');
+        if (!awayQb || !homeQb) {
+            container.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs">Estatísticas dos Quarterbacks indisponíveis.</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-4 bg-slate-950/60 border border-slate-800 p-4 rounded-xl">
+                <!-- Away QB -->
+                <div class="flex flex-col items-center text-center">
+                    <img src="${awayQb.headshotUrl}" alt="${awayQb.qbName}" class="w-16 h-16 rounded-full border-2 border-slate-700 mb-2 object-cover bg-slate-800" onerror="this.src='https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png';">
+                    <h4 class="text-sm font-bold text-white">${awayQb.qbName}</h4>
+                    <span class="text-xs text-amber-400 font-semibold">${awayQb.team} • QB</span>
+                </div>
+
+                <!-- Home QB -->
+                <div class="flex flex-col items-center text-center">
+                    <img src="${homeQb.headshotUrl}" alt="${homeQb.qbName}" class="w-16 h-16 rounded-full border-2 border-slate-700 mb-2 object-cover bg-slate-800" onerror="this.src='https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png';">
+                    <h4 class="text-sm font-bold text-white">${homeQb.qbName}</h4>
+                    <span class="text-xs text-amber-400 font-semibold">${homeQb.team} • QB</span>
+                </div>
+            </div>
+
+            <!-- Tabela Comparativa de Métricas -->
+            <div class="bg-slate-950/40 border border-slate-800/80 rounded-xl overflow-hidden text-xs">
+                <table class="w-full text-center">
+                    <thead class="bg-slate-800/60 text-slate-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="py-2.5 px-3 text-left w-1/3">${awayQb.team}</th>
+                            <th class="py-2.5 px-3 text-center text-slate-300">Estatística</th>
+                            <th class="py-2.5 px-3 text-right w-1/3">${homeQb.team}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-mono">
+                        <tr>
+                            <td class="py-2.5 px-3 text-left font-bold ${awayQb.passingYards >= homeQb.passingYards ? 'text-emerald-400' : 'text-slate-300'}">${awayQb.passingYards}</td>
+                            <td class="py-2.5 px-3 text-slate-400 font-sans">Jardas Aéreas</td>
+                            <td class="py-2.5 px-3 text-right font-bold ${homeQb.passingYards >= awayQb.passingYards ? 'text-emerald-400' : 'text-slate-300'}">${homeQb.passingYards}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 text-left font-bold ${awayQb.passingTds >= homeQb.passingTds ? 'text-emerald-400' : 'text-slate-300'}">${awayQb.passingTds}</td>
+                            <td class="py-2.5 px-3 text-slate-400 font-sans">Pass TDs</td>
+                            <td class="py-2.5 px-3 text-right font-bold ${homeQb.passingTds >= awayQb.passingTds ? 'text-emerald-400' : 'text-slate-300'}">${homeQb.passingTds}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 text-left font-bold ${awayQb.interceptions <= homeQb.interceptions ? 'text-emerald-400' : 'text-rose-400'}">${awayQb.interceptions}</td>
+                            <td class="py-2.5 px-3 text-slate-400 font-sans">Interceptações (INT)</td>
+                            <td class="py-2.5 px-3 text-right font-bold ${homeQb.interceptions <= awayQb.interceptions ? 'text-emerald-400' : 'text-rose-400'}">${homeQb.interceptions}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 text-left font-bold ${awayQb.completionPercentage >= homeQb.completionPercentage ? 'text-emerald-400' : 'text-slate-300'}">${awayQb.completionPercentage}%</td>
+                            <td class="py-2.5 px-3 text-slate-400 font-sans">% Conclusão</td>
+                            <td class="py-2.5 px-3 text-right font-bold ${homeQb.completionPercentage >= awayQb.completionPercentage ? 'text-emerald-400' : 'text-slate-300'}">${homeQb.completionPercentage}%</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 text-left font-black ${awayQb.passerRating >= homeQb.passerRating ? 'text-emerald-400' : 'text-slate-300'}">${awayQb.passerRating}</td>
+                            <td class="py-2.5 px-3 text-slate-400 font-sans">Passer Rating</td>
+                            <td class="py-2.5 px-3 text-right font-black ${homeQb.passerRating >= awayQb.passerRating ? 'text-emerald-400' : 'text-slate-300'}">${homeQb.passerRating}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
     }
 
     function showNotification(msg, type) {
