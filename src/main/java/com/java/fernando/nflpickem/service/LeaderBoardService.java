@@ -61,7 +61,7 @@ public class LeaderBoardService {
     }
 
     /**
-     * Tabela de Classificação Semanal (ex: Semana 6)
+     * Tabela de Classificação Semanal individual (ex: apenas Semana 6)
      */
     public List<LeaderBoardEntry> getWeeklyLeaderboard(int season, int weekNumber) {
         List<User> users = userRepository.findAll();
@@ -96,6 +96,7 @@ public class LeaderBoardService {
 
             int correctPicks = 0;
             Integer tiebreakerDiff = null;
+            Map<Integer, Integer> singleWeekMap = new HashMap<>();
 
             if (userPick != null) {
                 if (userPick.getPicks() != null) {
@@ -115,12 +116,15 @@ public class LeaderBoardService {
                 }
             }
 
+            singleWeekMap.put(weekNumber, correctPicks);
+
             entries.add(new LeaderBoardEntry(
                     user.getId(),
                     getUserDisplayName(user),
                     correctPicks,
                     0,
-                    tiebreakerDiff
+                    tiebreakerDiff,
+                    singleWeekMap
             ));
         }
 
@@ -128,7 +132,7 @@ public class LeaderBoardService {
     }
 
     /**
-     * Tabela de Classificação Geral da Época
+     * Tabela de Classificação Geral da Temporada com histórico completo (Semanas 1 a 18)
      */
     public List<LeaderBoardEntry> getSeasonLeaderboard(int season) {
         List<User> users = userRepository.findAll();
@@ -147,28 +151,33 @@ public class LeaderBoardService {
             int totalCorrect = 0;
             int totalTiebreakerDiff = 0;
             boolean hasComputedTiebreaker = false;
+            Map<Integer, Integer> weeklyPointsMap = new HashMap<>();
 
             for (UserPick userPick : allUserPicks) {
-                Week week = weeksMap.get(userPick.getWeekNumber());
+                int weekNum = userPick.getWeekNumber();
+                Week week = weeksMap.get(weekNum);
                 if (week == null || week.getGames() == null) continue;
 
                 Map<String, Game> weekGamesMap = new HashMap<>();
                 week.getGames().forEach(g -> weekGamesMap.put(g.getId(), g));
 
-                // Acertos nos jogos
+                int weekCorrect = 0;
                 if (userPick.getPicks() != null) {
                     for (Map.Entry<String, String> entry : userPick.getPicks().entrySet()) {
                         Game game = weekGamesMap.get(entry.getKey());
                         if (game != null && isGameFinished(game)) {
                             String realWinner = getGameWinner(game);
                             if (realWinner != null && realWinner.equalsIgnoreCase(entry.getValue())) {
-                                totalCorrect++;
+                                weekCorrect++;
                             }
                         }
                     }
                 }
 
-                // Desempate do jogo final
+                weeklyPointsMap.put(weekNum, weekCorrect);
+                totalCorrect += weekCorrect;
+
+                // Desempate acumulado
                 String tbGameId = week.getTiebreakerGameId();
                 if (tbGameId == null && !week.getGames().isEmpty()) {
                     tbGameId = week.getGames().get(week.getGames().size() - 1).getId();
@@ -193,7 +202,8 @@ public class LeaderBoardService {
                     getUserDisplayName(user),
                     totalCorrect,
                     0,
-                    finalDiff
+                    finalDiff,
+                    weeklyPointsMap
             ));
         }
 
@@ -249,7 +259,8 @@ public class LeaderBoardService {
                     entry.displayName(),
                     entry.totalPoints(),
                     currentRank++,
-                    entry.tiebreakerDiff()
+                    entry.tiebreakerDiff(),
+                    entry.weeklyPoints()
             ));
         }
 

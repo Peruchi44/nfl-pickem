@@ -85,7 +85,7 @@
 
         <div id="progressBarTiebreakerAlert" class="hidden mt-2 text-[11px] text-amber-400 flex items-center gap-1.5">
             <i class="fa-solid fa-triangle-exclamation text-xs"></i>
-            <span>Não esqueça de definir o palpite do jogo de desempate!</span>
+            <span>Não esqueça de definir a margem de vitória no jogo de desempate!</span>
         </div>
     </div>
 
@@ -128,7 +128,7 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
-                <input type="number" id="tiebreakerMarginInput" min="1" max="150" placeholder="Margem pts (ex: 7)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
+                <input type="number" id="tiebreakerMarginInput" min="1" max="99" placeholder="Margem pts (ex: 7)" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 w-44 text-center focus:ring-amber-500 focus:border-amber-500">
                 <button onclick="saveTiebreakerMargin()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition">
                     Salvar Margem
                 </button>
@@ -167,45 +167,78 @@
     </div>
 </div>
 
-<!-- Modal Leaderboard -->
-<div id="leaderboardModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-        <div class="flex justify-between items-center mb-4">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-trophy text-amber-400 text-lg"></i>
-                <h3 class="text-lg font-bold text-white">Classificação da Liga</h3>
+<!-- Modal Leaderboard Upgrade Visual -->
+<div id="leaderboardModal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 z-50">
+    <div class="bg-gradient-to-b from-slate-900 via-[#0d1527] to-slate-950 border border-slate-700/80 p-5 sm:p-6 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl shadow-blue-950/40">
+
+        <!-- Header -->
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl shadow-inner">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg sm:text-xl font-extrabold text-white tracking-wide flex items-center gap-2">
+                        Classificação da Liga <span class="text-xs font-mono font-normal px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">Temporada 2026</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Desempenho acumulado e pontuações semana a semana</p>
+                </div>
             </div>
-            <button onclick="closeLeaderboardModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            <button onclick="closeLeaderboardModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1 transition">&times;</button>
         </div>
 
-        <!-- Abas do Leaderboard -->
-        <div class="flex gap-2 border-b border-slate-800 pb-3 mb-3">
-            <button id="tabLeaderboardSeason" onclick="switchLeaderboardTab('SEASON')" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition">
-                Geral da Temporada
-            </button>
-            <button id="tabLeaderboardWeek" onclick="switchLeaderboardTab('WEEK')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
-                Semana <span id="leaderboardWeekBadgeNumber"></span>
-            </button>
+        <!-- Abas e Controles de Navegação -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 my-4">
+            <div class="flex gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800">
+                <button id="tabLeaderboardSeason" onclick="switchLeaderboardTab('SEASON')" class="text-xs font-bold px-4 py-2 rounded-lg bg-amber-500 text-slate-950 transition shadow-md shadow-amber-500/20 flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-simple"></i> Geral da Temporada
+                </button>
+                <button id="tabLeaderboardWeek" onclick="switchLeaderboardTab('WEEK')" class="text-xs font-semibold px-4 py-2 rounded-lg bg-transparent text-slate-400 hover:text-white transition flex items-center gap-1.5">
+                    <i class="fa-regular fa-calendar-days"></i> Por Semana
+                </button>
+            </div>
+
+            <!-- Seletor de Semanas -->
+            <div id="leaderboardWeekSelectorWrapper" class="hidden flex items-center gap-2 w-full sm:w-auto">
+                <span class="text-xs text-slate-400 font-medium">Visualizar:</span>
+                <select id="leaderboardWeekSelect" onchange="changeLeaderboardWeek(this.value)" class="bg-slate-800 border border-slate-700 text-amber-400 text-xs rounded-lg px-3 py-1.5 focus:ring-amber-500 focus:border-amber-500 font-bold">
+                </select>
+            </div>
         </div>
 
-        <!-- Mensagem de Empate -->
-        <div id="leaderboardTieMessage" class="hidden mb-3 p-3 rounded-lg border border-amber-500/40 bg-amber-950/20 text-xs text-amber-300 flex items-center gap-2">
+        <!-- Pódio Top 3 -->
+        <div id="podiumContainer" class="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+            <!-- 2º Lugar -->
+            <div id="podiumSecond" class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 flex flex-col items-center justify-center text-center relative overflow-hidden order-1">
+                <div class="text-slate-400 font-bold text-xs uppercase mb-1">🥈 2º Lugar</div>
+                <div id="podiumSecondName" class="font-extrabold text-sm sm:text-base text-slate-200 truncate w-full">-</div>
+                <div id="podiumSecondPoints" class="text-base sm:text-lg font-black text-slate-300 font-mono">0 pts</div>
+            </div>
+            <!-- 1º Lugar -->
+            <div id="podiumFirst" class="bg-gradient-to-b from-amber-950/40 to-slate-900/80 border-2 border-amber-500/60 rounded-xl p-3 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-lg shadow-amber-500/10 order-2">
+                <div class="absolute -top-6 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
+                <div class="text-amber-400 font-black text-xs uppercase mb-1 flex items-center gap-1">🥇 Líder</div>
+                <div id="podiumFirstName" class="font-extrabold text-sm sm:text-base text-white truncate w-full">-</div>
+                <div id="podiumFirstPoints" class="text-lg sm:text-2xl font-black text-amber-400 font-mono">0 pts</div>
+            </div>
+            <!-- 3º Lugar -->
+            <div id="podiumThird" class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 flex flex-col items-center justify-center text-center relative overflow-hidden order-3">
+                <div class="text-amber-700 font-bold text-xs uppercase mb-1">🥉 3º Lugar</div>
+                <div id="podiumThirdName" class="font-extrabold text-sm sm:text-base text-slate-200 truncate w-full">-</div>
+                <div id="podiumThirdPoints" class="text-base sm:text-lg font-black text-amber-600 font-mono">0 pts</div>
+            </div>
         </div>
 
-        <div class="overflow-y-auto flex-1">
-            <table class="w-full text-sm text-left text-slate-300">
-                <thead class="text-xs uppercase bg-slate-800 text-slate-400 sticky top-0">
-                <tr>
-                    <th class="px-4 py-3 rounded-l-lg">Pos</th>
-                    <th class="px-4 py-3">Participante</th>
-                    <th class="px-4 py-3 text-center" id="colHeaderPoints">Acertos</th>
-                    <th class="px-4 py-3 text-center rounded-r-lg" id="colHeaderExtra">Dif. Tiebreaker</th>
-                </tr>
+        <!-- Tabela com Matriz de Semanas (S1 a S18) -->
+        <div class="overflow-x-auto overflow-y-auto flex-1 rounded-xl border border-slate-800/80 bg-slate-950/60 shadow-inner">
+            <table class="w-full text-xs text-left text-slate-300 border-collapse whitespace-nowrap">
+                <thead id="leaderboardThead" class="text-[11px] uppercase bg-slate-900/90 text-slate-400 sticky top-0 z-20 backdrop-blur-md border-b border-slate-800">
                 </thead>
-                <tbody id="leaderboardBody" class="divide-y divide-slate-800/60">
+                <tbody id="leaderboardBody" class="divide-y divide-slate-800/50 font-sans">
                 </tbody>
             </table>
         </div>
+
     </div>
 </div>
 
@@ -261,6 +294,7 @@
 
     let currentUser = getSavedUser();
     let currentWeek = 1;
+    let selectedLeaderboardWeek = 1;
     let activeWeekData = null;
     let currentStatsMap = {};
     let userPicks = {};
@@ -953,7 +987,6 @@
                 '</button>' +
                 '</div>' +
                 renderWinProbabilityBar(awayCode, homeCode, statsMap) +
-                // Botão para abrir o Raio-X de Lesões e QBs do jogo
                 '<button type="button" onclick="openMatchupInsight(\'' + game.id + '\', \'' + awayCode + '\', \'' + homeCode + '\')" class="mt-3 w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-amber-400 text-xs font-semibold flex items-center justify-center gap-2 transition">' +
                 '<i class="fa-solid fa-stethoscope"></i> <span>Lesões & Raio-X dos QBs</span>' +
                 '</button>';
@@ -1068,9 +1101,19 @@
     // Leaderboard
     async function openLeaderboardModal() {
         const modal = document.getElementById('leaderboardModal');
-        document.getElementById('leaderboardWeekBadgeNumber').textContent = currentWeek;
-        document.getElementById('leaderboardTieMessage').classList.add('hidden');
         modal.classList.remove('hidden');
+
+        const select = document.getElementById('leaderboardWeekSelect');
+        if (select && select.children.length === 0) {
+            for (let i = 1; i <= 18; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = 'Semana ' + i;
+                select.appendChild(opt);
+            }
+        }
+        selectedLeaderboardWeek = currentWeek;
+        if (select) select.value = selectedLeaderboardWeek;
 
         await loadSeasonLeaderboard();
     }
@@ -1079,221 +1122,187 @@
         activeLeaderboardTab = tab;
         const tabSeasonBtn = document.getElementById('tabLeaderboardSeason');
         const tabWeekBtn = document.getElementById('tabLeaderboardWeek');
-        const colPoints = document.getElementById('colHeaderPoints');
-        const colExtra = document.getElementById('colHeaderExtra');
-        const tieMsgEl = document.getElementById('leaderboardTieMessage');
+        const weekSelectorWrapper = document.getElementById('leaderboardWeekSelectorWrapper');
+        const podium = document.getElementById('podiumContainer');
 
         if (tab === 'SEASON') {
-            tabSeasonBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition';
-            tabWeekBtn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
-            colPoints.textContent = 'Acertos Totais';
-            colExtra.textContent = 'Dif. Tiebreaker';
-            if (tieMsgEl) tieMsgEl.classList.add('hidden');
-            renderLeaderboardTable(cachedSeasonLeaderboard, false);
+            tabSeasonBtn.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-amber-500 text-slate-950 transition shadow-md shadow-amber-500/20 flex items-center gap-1.5';
+            tabWeekBtn.className = 'text-xs font-semibold px-4 py-2 rounded-lg bg-transparent text-slate-400 hover:text-white transition flex items-center gap-1.5';
+            weekSelectorWrapper.classList.add('hidden');
+            if (podium) podium.classList.remove('hidden');
+            renderSeasonLeaderboardTable(cachedSeasonLeaderboard);
         } else {
-            tabWeekBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 transition';
-            tabSeasonBtn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
-            colPoints.textContent = 'Acertos na Semana';
-            colExtra.textContent = 'Dif. Tiebreaker';
+            tabWeekBtn.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-amber-500 text-slate-950 transition shadow-md shadow-amber-500/20 flex items-center gap-1.5';
+            tabSeasonBtn.className = 'text-xs font-semibold px-4 py-2 rounded-lg bg-transparent text-slate-400 hover:text-white transition flex items-center gap-1.5';
+            weekSelectorWrapper.classList.remove('hidden');
+            if (podium) podium.classList.add('hidden');
             loadWeekLeaderboard();
         }
     }
 
+    function changeLeaderboardWeek(val) {
+        selectedLeaderboardWeek = parseInt(val);
+        loadWeekLeaderboard();
+    }
+
     async function loadSeasonLeaderboard() {
         const tbody = document.getElementById('leaderboardBody');
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Carregando classificação geral...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="23" class="text-center py-10 text-slate-500"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><br>Carregando tabela completa...</td></tr>';
 
         try {
             let res = await fetch('/api/v1/leaderboard/season');
             if (!res.ok) {
                 res = await fetch('/api/leaderboard/' + CURRENT_SEASON);
             }
-            if (!res.ok) throw new Error('Erro ao carregar leaderboard');
+            if (!res.ok) throw new Error('Falha ao carregar ranking geral');
             cachedSeasonLeaderboard = await res.json();
+            updatePodium(cachedSeasonLeaderboard);
             switchLeaderboardTab('SEASON');
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-red-400">Falha ao carregar ranking geral.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="23" class="text-center py-10 text-rose-400">Erro ao carregar o ranking da temporada.</td></tr>';
         }
     }
 
-    async function loadWeekLeaderboard() {
-        const tbody = document.getElementById('leaderboardBody');
-        const tieMsgEl = document.getElementById('leaderboardTieMessage');
-        if (tieMsgEl) tieMsgEl.classList.add('hidden');
+    function updatePodium(ranking) {
+        if (!ranking || ranking.length === 0) return;
 
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Calculando acertos da Semana ' + currentWeek + ' para cada participante...</td></tr>';
-
-        try {
-            const resWeekly = await fetch('/api/v1/leaderboard/week/' + currentWeek);
-            if (resWeekly.ok) {
-                const weeklyData = await resWeekly.json();
-                if (weeklyData && weeklyData.length > 0) {
-                    renderLeaderboardTable(weeklyData, true);
-                    return;
-                }
-            }
-        } catch (e) {
-            console.warn('Endpoint direto semanal indisponível, usando cálculo local.');
+        if (ranking[0]) {
+            document.getElementById('podiumFirstName').textContent = ranking[0].displayName;
+            document.getElementById('podiumFirstPoints').textContent = ranking[0].totalPoints + ' pts';
         }
-
-        if (!cachedSeasonLeaderboard || cachedSeasonLeaderboard.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum participante encontrado.</td></tr>';
-            return;
+        if (ranking[1]) {
+            document.getElementById('podiumSecondName').textContent = ranking[1].displayName;
+            document.getElementById('podiumSecondPoints').textContent = ranking[1].totalPoints + ' pts';
+        } else {
+            document.getElementById('podiumSecondName').textContent = '-';
+            document.getElementById('podiumSecondPoints').textContent = '0 pts';
         }
-
-        const winnersMap = {};
-        let tbGame = null;
-        let actualTiebreakerMargin = null;
-
-        if (activeWeekData && activeWeekData.games) {
-            if (activeWeekData.tiebreakerGameId) {
-                tbGame = activeWeekData.games.find(g => g.id === activeWeekData.tiebreakerGameId);
-            }
-            if (!tbGame && activeWeekData.games.length > 0) {
-                tbGame = activeWeekData.games[activeWeekData.games.length - 1];
-            }
-
-            if (tbGame && (tbGame.status === 'STATUS_FINAL' || tbGame.status === 'FINAL')) {
-                const aScore = Number(tbGame.awayScore ?? 0);
-                const hScore = Number(tbGame.homeScore ?? 0);
-                actualTiebreakerMargin = Math.abs(hScore - aScore);
-            }
-
-            activeWeekData.games.forEach(g => {
-                const isFinal = g.status === 'STATUS_FINAL' || g.status === 'FINAL';
-                if (isFinal) {
-                    const aScore = Number(g.awayScore ?? 0);
-                    const hScore = Number(g.homeScore ?? 0);
-                    const awayTeam = (g.awayTeam || '').trim().toUpperCase();
-                    const homeTeam = (g.homeTeam || '').trim().toUpperCase();
-
-                    if (aScore > hScore) winnersMap[g.id] = awayTeam;
-                    else if (hScore > aScore) winnersMap[g.id] = homeTeam;
-                }
-            });
+        if (ranking[2]) {
+            document.getElementById('podiumThirdName').textContent = ranking[2].displayName;
+            document.getElementById('podiumThirdPoints').textContent = ranking[2].totalPoints + ' pts';
+        } else {
+            document.getElementById('podiumThirdName').textContent = '-';
+            document.getElementById('podiumThirdPoints').textContent = '0 pts';
         }
-
-        const weekScores = await Promise.all(cachedSeasonLeaderboard.map(async (u) => {
-            const uid = u.userId || u.id;
-            let pts = 0;
-            let userMargin = null;
-
-            if (currentUser && (currentUser.id === uid || currentUser.userId === uid)) {
-                if (userPicks) {
-                    Object.entries(userPicks).forEach(([gId, team]) => {
-                        if (winnersMap[gId] && winnersMap[gId] === String(team).trim().toUpperCase()) {
-                            pts++;
-                        }
-                    });
-                }
-                const marginInput = document.getElementById('tiebreakerMarginInput');
-                userMargin = marginInput ? parseInt(marginInput.value) : null;
-            } else if (uid) {
-                try {
-                    const res = await fetch('/api/picks/' + uid + '/' + CURRENT_SEASON + '/' + currentWeek);
-                    if (res.ok) {
-                        const pData = await res.json();
-                        if (pData && pData.picks) {
-                            Object.entries(pData.picks).forEach(([gId, team]) => {
-                                if (winnersMap[gId] && winnersMap[gId] === String(team).trim().toUpperCase()) {
-                                    pts++;
-                                }
-                            });
-                        }
-                        userMargin = pData ? pData.tiebreakerMargin : null;
-                    }
-                } catch (e) {
-                    // Sem palpites
-                }
-            }
-
-            let diff = null;
-            if (actualTiebreakerMargin !== null && userMargin !== null && !isNaN(userMargin)) {
-                diff = Math.abs(userMargin - actualTiebreakerMargin);
-            }
-
-            return {
-                userId: uid,
-                displayName: u.displayName || u.username || u.name || 'Participante',
-                weekPoints: pts,
-                tiebreakerMargin: userMargin,
-                tiebreakerDiff: diff
-            };
-        }));
-
-        weekScores.sort((a, b) => {
-            if (b.weekPoints !== a.weekPoints) {
-                return b.weekPoints - a.weekPoints;
-            }
-            if (a.tiebreakerDiff != null && b.tiebreakerDiff != null) {
-                return a.tiebreakerDiff - b.tiebreakerDiff;
-            }
-            if (a.tiebreakerDiff != null) return -1;
-            if (b.tiebreakerDiff != null) return 1;
-            return 0;
-        });
-
-        weekScores.forEach((u, i) => u.rank = i + 1);
-
-        if (currentUser && tieMsgEl) {
-            const myId = currentUser.id || currentUser.userId || currentUser._id;
-            const me = weekScores.find(u => u.userId === myId);
-
-            if (me) {
-                const tiedWith = weekScores.filter(u => u.userId !== myId && u.weekPoints === me.weekPoints);
-                if (tiedWith.length > 0) {
-                    const rivals = tiedWith.map(r => r.displayName).join(', ');
-
-                    let tieMessage = '';
-                    if (me.weekPoints >= 10) {
-                        tieMessage = `🐐 <strong>Empate de Mestres:</strong> Você e <strong>${rivals}</strong> empataram lá no topo com ${me.weekPoints} acertos! Dois Tom Bradys disputando o anel da rodada palmo a palmo!`;
-                    } else if (me.weekPoints <= 4) {
-                        tieMessage = `🎙️ <strong>Paulo Antunes manda avisar:</strong> 'Inacreditável, beeem amigos da ESPN!' Você e <strong>${rivals}</strong> empataram com ${me.weekPoints} acertos. A blitz pegou os dois desprevenidos!`;
-                    } else {
-                        tieMessage = `🎾 <strong>TEMOOOS UM JOGO, TEMOOOS UM DJOKO!</strong> Você e <strong>${rivals}</strong> empataram rigorosamente com ${me.weekPoints} acertos! Disputa acirradíssima decidida na prorrogação!`;
-                    }
-
-                    tieMsgEl.innerHTML = tieMessage;
-                    tieMsgEl.classList.remove('hidden');
-                }
-            }
-        }
-
-        renderLeaderboardTable(weekScores, true);
     }
 
-    function renderLeaderboardTable(ranking, isWeekly) {
+    function renderSeasonLeaderboardTable(ranking) {
+        const thead = document.getElementById('leaderboardThead');
         const tbody = document.getElementById('leaderboardBody');
+
+        let headerHtml = `
+            <tr>
+                <th class="py-3 px-3 text-center w-12 sticky left-0 bg-slate-900 z-30">Pos</th>
+                <th class="py-3 px-4 sticky left-12 bg-slate-900 z-30 min-w-[140px]">Participante</th>
+                <th class="py-3 px-3 text-center bg-slate-900/95 font-bold text-emerald-400">Total</th>
+                <th class="py-3 px-3 text-center bg-slate-900/95 text-slate-300">Tiebreaker</th>
+        `;
+
+        for (let w = 1; w <= 18; w++) {
+            const isCurrent = (w === currentWeek);
+            headerHtml += `<th class="py-3 px-2 text-center font-mono w-10 ${isCurrent ? 'bg-amber-500/20 text-amber-300 font-black border-x border-amber-500/30' : 'text-slate-400'}">S${w}</th>`;
+        }
+        headerHtml += `</tr>`;
+        thead.innerHTML = headerHtml;
         tbody.innerHTML = '';
 
         if (!ranking || ranking.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">Nenhum dado computado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="23" class="text-center py-8 text-slate-500">Nenhum palpite computado.</td></tr>';
             return;
         }
 
         ranking.forEach((u, index) => {
+            const pos = u.rank || (index + 1);
+            let posBadge = `<span class="font-bold text-slate-400">${pos}º</span>`;
+            if (pos === 1) posBadge = `<span class="text-amber-400 font-extrabold flex items-center justify-center gap-1">🥇 1º</span>`;
+            if (pos === 2) posBadge = `<span class="text-slate-300 font-extrabold flex items-center justify-center gap-1">🥈 2º</span>`;
+            if (pos === 3) posBadge = `<span class="text-amber-600 font-extrabold flex items-center justify-center gap-1">🥉 3º</span>`;
+
+            const diffVal = (u.tiebreakerDiff !== null && u.tiebreakerDiff !== undefined) ? u.tiebreakerDiff + ' pts' : '-';
+
+            let rowHtml = `
+                <tr class="hover:bg-slate-800/40 transition-colors">
+                    <td class="py-2.5 px-3 text-center sticky left-0 bg-slate-950 z-10">${posBadge}</td>
+                    <td class="py-2.5 px-4 font-bold text-slate-200 sticky left-12 bg-slate-950 z-10 truncate max-w-[150px]">${u.displayName}</td>
+                    <td class="py-2.5 px-3 text-center font-black text-emerald-400 font-mono text-sm">${u.totalPoints}</td>
+                    <td class="py-2.5 px-3 text-center text-slate-400 font-mono">${diffVal}</td>
+            `;
+
+            for (let w = 1; w <= 18; w++) {
+                const isCurrent = (w === currentWeek);
+                let pts = '-';
+
+                if (u.weeklyPoints && u.weeklyPoints[w] !== undefined) {
+                    pts = u.weeklyPoints[w];
+                }
+
+                const cellStyle = isCurrent
+                    ? 'bg-amber-500/10 font-bold text-amber-300 border-x border-slate-800/80'
+                    : (w < currentWeek ? 'text-slate-200 font-semibold' : 'text-slate-600');
+
+                rowHtml += `<td class="py-2.5 px-2 text-center font-mono text-xs ${cellStyle}">${pts}</td>`;
+            }
+
+            rowHtml += `</tr>`;
+            tbody.innerHTML += rowHtml;
+        });
+    }
+
+    async function loadWeekLeaderboard() {
+        const thead = document.getElementById('leaderboardThead');
+        const tbody = document.getElementById('leaderboardBody');
+
+        thead.innerHTML = `
+            <tr>
+                <th class="py-3 px-4 text-center w-16">Pos</th>
+                <th class="py-3 px-4">Participante</th>
+                <th class="py-3 px-4 text-center text-emerald-400">Acertos (Semana ${selectedLeaderboardWeek})</th>
+                <th class="py-3 px-4 text-center text-slate-300">Dif. Tiebreaker</th>
+            </tr>
+        `;
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-slate-500">Calculando dados da Semana ' + selectedLeaderboardWeek + '...</td></tr>';
+
+        try {
+            const res = await fetch('/api/v1/leaderboard/week/' + selectedLeaderboardWeek);
+            if (res.ok) {
+                const weeklyData = await res.json();
+                renderWeeklyLeaderboardTable(weeklyData);
+                return;
+            }
+        } catch (e) {
+            console.warn('Endpoint direto semanal falhou, carregando fallback.');
+        }
+
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-slate-500">Nenhum registro para esta semana.</td></tr>';
+    }
+
+    function renderWeeklyLeaderboardTable(ranking) {
+        const tbody = document.getElementById('leaderboardBody');
+        tbody.innerHTML = '';
+
+        if (!ranking || ranking.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-slate-500">Nenhum dado computado nesta semana.</td></tr>';
+            return;
+        }
+
+        ranking.forEach((u, index) => {
+            const pos = u.rank || (index + 1);
+            let posBadge = `<span class="font-bold text-slate-400">${pos}º</span>`;
+            if (pos === 1) posBadge = `<span class="text-amber-400 font-extrabold">🥇 1º</span>`;
+            if (pos === 2) posBadge = `<span class="text-slate-300 font-extrabold">🥈 2º</span>`;
+            if (pos === 3) posBadge = `<span class="text-amber-600 font-extrabold">🥉 3º</span>`;
+
+            const diffVal = (u.tiebreakerDiff !== null && u.tiebreakerDiff !== undefined) ? u.tiebreakerDiff + ' pts' : '-';
+
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-800/40 border-b border-slate-800/40';
-
-            const position = u.rank || (index + 1);
-            let posBadge = '<span class="font-medium text-slate-400">' + position + 'º</span>';
-            if (position === 1) posBadge = '<span class="text-yellow-400 font-bold"><i class="fa-solid fa-medal"></i> 1º</span>';
-            if (position === 2) posBadge = '<span class="text-slate-300 font-bold"><i class="fa-solid fa-medal"></i> 2º</span>';
-            if (position === 3) posBadge = '<span class="text-amber-600 font-bold"><i class="fa-solid fa-medal"></i> 3º</span>';
-
-            const name = u.displayName || u.username || u.name || ('Participante ' + position);
-            const points = isWeekly ? (u.weekPoints ?? u.totalPoints ?? 0) : (u.totalPoints ?? 0);
-
-            const diffValue = u.tiebreakerDiff ?? u.tiebreakerDifference;
-            const extraVal = (diffValue !== null && diffValue !== undefined)
-                ? diffValue + ' pts'
-                : '-';
-
-            row.innerHTML = '<td class="px-4 py-3">' + posBadge + '</td>' +
-                '<td class="px-4 py-3 font-semibold text-slate-200">' + name + '</td>' +
-                '<td class="px-4 py-3 text-center text-emerald-400 font-bold">' + points + '</td>' +
-                '<td class="px-4 py-3 text-center text-slate-400 font-mono">' + extraVal + '</td>';
+            row.className = 'hover:bg-slate-800/40 border-b border-slate-800/50 transition-colors';
+            row.innerHTML = `
+                <td class="py-3 px-4 text-center">${posBadge}</td>
+                <td class="py-3 px-4 font-bold text-slate-200">${u.displayName}</td>
+                <td class="py-3 px-4 text-center font-black text-emerald-400 text-sm font-mono">${u.totalPoints}</td>
+                <td class="py-3 px-4 text-center font-mono text-slate-400">${diffVal}</td>
+            `;
             tbody.appendChild(row);
         });
     }
